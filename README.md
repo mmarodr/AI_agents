@@ -1,37 +1,47 @@
 # Agentes de IA - Desenvolvimento Próprio
 
-#### Aluno: [Marcos de Mattos Amarante Rodrigues](https://github.com/mmarodr)
-#### Orientadora: [Leonardo](https://github.com/link_do_github)
+#### Aluno: [Marcos de Mattos Amarante Rodrigues](https://github.com/mmarodr)  
+#### Orientador: [Leonardo](https://github.com/link_do_github)
 
 ---
 
-Trabalho apresentado ao curso [BI MASTER](https://ica.puc-rio.ai/bi-master) como pré-requisito para conclusão de curso e obtenção de crédito na disciplina "Projetos de Sistemas Inteligentes de Apoio à Decisão".
+Trabalho apresentado ao curso [BI MASTER](https://ica.puc-rio.ai/bi-master) como pré-requisito para conclusão e obtenção de crédito na disciplina **"Projetos de Sistemas Inteligentes de Apoio à Decisão"**.
 
-- [Link para o código](/AI_agents).
+- [Link para o código](/AI_agents)
 
 ---
 
 ### Resumo
 
-O barateamento e a disponibilização de diversos serviços oferecendo Grandes Modelos de Linguagem - LLMs tornou seu uso popular tanto entre experientes programadores quanto para iniciantes no assunto. Mesmo dentro de grandes corporações como a Petrobras, com estruturas bem definidadas sobre sua organização não conseguem evitar que iniciativas utilizando LLMs ocorram fora da sua area de Tecnologia, então, remando junto a corrente, a Petrobras incentiva que suas áreas fora da TI busquem seus usos e aprimoramentos em tecnicas utilizando LLMs.
-Durante a primeira etapa de entendimento do projeto foi entregue em produção para a área de Contabilidade da Petrobras um chat capáz de utilizar RAG em documentos internos, entretanto esse método ainda se mostrava inclompleto para atender as necessidades dos gestores e analistas.
-A ideia era permitir que o chat pudesse interpretar a entrada do analista e decidisse o melhor caminho a seguir, o que poderia ser pelo uso de RAG como primeiramente desenvolvido, mas tambem atendendo a outras demandas como:
-  - estatisticas da base de documentos;
-  - interpretação de documentos inteiros, mesmo que muito extensos;
-  - assistente para busca em base de dados;
-  - interpretador de resultados;
-  - especialista em cálculos matemáticos;
-  - gestor de memória de curto e longo prazo;
-  - ou um fluxo direto para responder a um simples bom dia.
-Como se tornara inviável o tratamento de tantas alternativas pelo uso de prompts, os agentes pareceram a melhor opção a ser seguida.
-Este projeto representa minha conclusão sobre a forma mais viável encontrada para a área da Contabilidade no uso de um chat utilizando agentes de IA.
-A escolha pelo desenvolvimento de um framework proprio foi motivada pela dificuldade de dois grandes fatores do projeto:
-  - utilização de conectores próprios nem sempre é direta com frameworks de mercado;
-  - agentes tendem a seguir uma dinâmica propria, idealizada por seus criadores, o que não necessariamente se enquadra em um fluxo pre definido de uma atividade.
-Outros ganhos relevantes tambem se destacam ao optarmos pelo desenvolvimento interno:
-  - controle preciso do trafego de dados, enviando para a LLM apenas os tokens necessários em cada etapa do processo;
-  - liberdade para implementar novas técnicas sem depender que o framework escolhido já tenha incluido suas atualizações;
-  - códigos mais diretos, voltado para não programadores, facilitando a leitura e entendimento por proficional fora da área de TI.
+O barateamento e a disponibilização de diversos serviços oferecendo **Grandes Modelos de Linguagem (LLMs)** tornaram seu uso popular tanto entre programadores experientes quanto entre iniciantes. Mesmo em grandes corporações como a **Petrobras**, com estruturas bem definidas, não se consegue evitar que iniciativas utilizando LLMs ocorram fora da área de **Tecnologia da Informação (TI)**. Assim, alinhada com essa tendência, a Petrobras incentiva que suas áreas não técnicas explorem o uso e o aprimoramento de técnicas baseadas em LLMs.
+
+Durante a primeira etapa do projeto, foi entregue à área de **Contabilidade** um chat capaz de utilizar **RAG** (*Retrieval-Augmented Generation*) em documentos internos. No entanto, esse método se mostrou incompleto para atender às necessidades dos gestores e analistas. 
+
+A ideia era permitir que o chat pudesse interpretar a entrada do analista e decidisse o melhor caminho a seguir. Isso poderia envolver o uso de RAG, mas também outras demandas como:
+
+- Estatísticas da base de documentos;  
+- Interpretação de documentos extensos;  
+- Assistência para busca em bases de dados;  
+- Interpretação de resultados;  
+- Cálculos matemáticos;  
+- Gestão de memória de curto e longo prazo;  
+- Fluxo direto para responder a um simples "bom dia".
+
+Dado o número de alternativas, o uso de prompts tornou-se inviável, e os **agentes** surgiram como a melhor opção.
+
+Este projeto representa a conclusão sobre a abordagem mais viável encontrada para a área de Contabilidade no uso de um chat com agentes de IA.
+
+A escolha pelo desenvolvimento de um **framework próprio** foi motivada por dois grandes fatores:
+
+1. **Conectores personalizados**: Nem sempre são facilmente integráveis com frameworks de mercado.  
+2. **Dinâmica própria dos agentes**: Agentes seguem fluxos idealizados por seus criadores, o que pode não se enquadrar em um fluxo predefinido de uma atividade.
+
+Outros ganhos relevantes com o desenvolvimento interno incluem:
+
+- **Controle preciso do tráfego de dados**, enviando à LLM apenas os tokens necessários em cada etapa do processo.  
+- **Liberdade de implementar novas técnicas** sem depender das atualizações de frameworks de terceiros.  
+- **Código direto e acessível** para não programadores, facilitando a leitura e o entendimento por profissionais fora da área de TI.
+
 
 ### Abstract
 
