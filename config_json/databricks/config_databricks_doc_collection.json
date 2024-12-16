@@ -1,0 +1,33 @@
+﻿{
+  "connection": {
+    "server_hostname": "Digite aqui seu server_hostname",
+    "http_path": "digite aqui ser http_path" 
+  },
+  "users_access": {
+    "table": "dtcore_prd.aida.acesso_usuario",
+    "profile_prefix ": "GDB_DLKC_PRD_PFL_"
+  },
+  "columns": {
+    "source_col": "source",
+    "file_col": "file_as_str",
+    "context_col": "page_content",
+    "rag_col": "vector_embedding_3large",
+    "metadata_col": "metadata_dictionary",
+    "file_base_id_col": "id",
+    "vec_base_file_id_col": "file_id"
+  },
+  "functions": {
+    "euclidean": "dt0047_prd.db_functions.euclidean_distance",
+    "cosine": "dt0047_prd.db_functions.cosine_distance"
+  },
+  "data_sources": {
+    "intimacoes_sefaz_rj": {
+      "file_base": "dt0047_prd.chat_bot.intimacoes_fiscais_pgov_sefaz_rj_file_base",
+      "vec_base": "dt0047_prd.chat_bot.intimacoes_fiscais_pgov_sefaz_rj_vec_base"
+    },
+    "normas_contabeis": {
+      "file_base": "dt0047_prd.chat_bot.normas_contabeis_guia_de_normas_file_base",
+      "vec_base": "dt0047_prd.chat_bot.normas_contabeis_guia_de_normas_vec_base"
+    }
+  }
+}

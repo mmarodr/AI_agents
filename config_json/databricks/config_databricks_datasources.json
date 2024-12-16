@@ -1,0 +1,36 @@
+﻿{
+  "connection": {
+    "server_hostname": "Digite aqui seu server_hostname",
+    "http_path": "digite aqui ser http_path" 
+  },
+  "users_access": {
+    "table": "dtcore_prd.aida.acesso_usuario",
+    "profile_prefix": "GDB_DLKC_PRD_PFL_"
+  },
+  "data_sources": {
+    "intimacoes_sefaz_rj_pgov_gastos": {
+      "process_description": "Rateio de gastos auditados pela SEFAZ-RJ relacionados às participações governamentais",
+      "relationships": "A tabela 1 se relaciona com a 2 usando o campo abc",
+      "tables": {
+        "base_h": {
+          "address": "dt0047_prd.gastos.base_h_pgov_sefaz_rj_gastos"
+        },
+        "base_r": {
+          "address": "dt0047_prd.gastos.base_r_pgov_sefaz_rj_gastos"
+        },
+        "base_resultado": {
+          "address": "dt0047_prd.gastos.base_result_pgov_sefaz_rj_gastos"
+        }
+      }
+    },
+    "Estoque_Produtos": {
+      "process_description": "Análise das contas de estoques de produtos registradas na transação CKM3 para montagem do custeio e outras análises relacionadas.",
+      "relationships": "",
+      "tables": {
+        "ckm3_custeio": {
+          "address": "dt0047_prd.custeio.base_acumulada_custeio_ckm3"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+requests==2.32.3
+python-dotenv==1.0.1
+sqlalchemy==2.0.32
+databricks-sql-connector==3.3.0
+termcolor==2.4.0
+duckduckgo-search==6.2.10
+PyMuPDF==1.23.26
+EbookLib==0.18
+beautifulsoup4==4.12.3
+pandas
+flask
+pyinstaller

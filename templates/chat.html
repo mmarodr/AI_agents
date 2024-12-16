@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Contabilidade</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <!-- Barra lateral para menu sanduíche -->
+    <div class="sidebar">
+        <div class="menu-toggle" onclick="toggleSidebar()">☰</div>
+        <div class="sidebar-content">
+            <div class="menu-item" onclick="showContent('home')">
+                <i class="fas fa-home"></i><span> Home</span>
+            </div>
+            <div class="menu-item" onclick="showContent('agent-management')">
+                <i class="fas fa-users-cog"></i><span> Gestão dos Agentes</span>
+            </div>
+            <div class="menu-item" onclick="showContent('personal-data')">
+                <i class="fas fa-user"></i><span> Gestão de Dados Pessoais</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Segunda barra lateral para exibir informações de cada menu -->
+    <div class="info-sidebar" id="infoSidebar">
+        <button class="toggle-button" onclick="toggleInfoSidebar()">❮</button>
+        
+        <!-- Seção Home -->
+        <div id="home" class="content-section active">
+            <h2>Home</h2>
+            <p>Bem-vindo à área principal do sistema.</p>
+        
+            <!-- Botão para iniciar um novo chat -->
+            <button class="btn btn-primary" onclick="startNewChat()">Novo Chat</button>
+        
+            <!-- Contêiner para exibir a lista de chats -->
+            <div id="chat-list-container" style="margin-top: 20px;">
+                <h4>Selecione um chat para recuperar:</h4>
+                <div class="list-group">
+                    {% if chat_list %}
+                        {% for chat in chat_list %}
+                            <div class="list-group-item d-flex align-items-center">
+                                <!-- Ícone de chat -->
+                                <i class="fas fa-comments mr-2"></i>
+                                <span onclick="recoverChat('{{ chat.chat_id }}')" style="cursor: pointer; color: #007bff;">
+                                    {{ chat.chat_title }}
+                                </span>
+                                <!-- Container para os botões, mantendo-os próximos -->
+                                <div class="ml-auto d-flex">
+                                    <!-- Botão de edição com ícone de lápis -->
+                                    <button class="btn btn-link p-0 mr-1" onclick="editChatTitle('{{ chat.chat_id }}', '{{ chat.chat_title }}')">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <!-- Botão de exclusão com ícone de lixeira vermelha -->
+                                    <button class="btn btn-link p-0" onclick="deleteChat('{{ chat.chat_id }}')" style="color: #dc3545;">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>Nenhum chat disponível.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- Seção de Gestão dos Agentes -->
+        <div id="agent-management" class="content-section" style="display: none;">
+            <h2>Gestão dos Agentes</h2>
+            <h3>Selecionar Agentes
+                <i class="fas fa-info-circle info-icon" title="Ative ou desative os agentes conforme necessário."></i>
+            </h3>
+            {% for agent_name, is_active in agent_states.items() %}
+                <div class="agent-selection">
+                    <input type="checkbox" id="{{ agent_name }}" onclick="toggleAgent('{{ agent_name }}')" {% if is_active %}checked{% endif %}>
+                    <label for="{{ agent_name }}">{{ agent_name }}</label>
+                </div>
+            {% endfor %}
+        
+            <h3>Selecionar Coleções
+                <i class="fas fa-info-circle info-icon" title="Escolha as coleções disponíveis para cada agente."></i>
+            </h3>
+            {% for agent_name, collections in agent_collections.items() %}
+                <div class="collection-selection">
+                    <h4>{{ agent_name }}</h4>
+                    {% for collection, active in collections.items() %}
+                        <div class="collection-item">
+                            <input type="checkbox" id="{{ agent_name }}-{{ collection }}" value="{{ collection }}" {% if active %}checked{% endif %} onclick="updateCollectionList('{{ agent_name }}', '{{ collection }}', this.checked)" />
+                            <label for="{{ agent_name }}-{{ collection }}">{{ collection }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>        
+
+        <!-- Seção de Gestão de Dados Pessoais e Tabelas -->
+        <div id="personal-data" class="content-section" style="display: none;">
+            <h2>Gestão de Dados</h2>
+            <p>Aqui você pode gerenciar seus dados pessoais e informações de tabelas armazenadas.</p>
+
+            <!-- Subtítulo para Gestão de Dados Pessoais -->
+            <h3>Gestão de Documentos Pessoais</h3>
+            <button type="button" class="btn btn-primary btn-collection" onclick="openCollectionModal()">Criar Nova Coleção</button>
+            <button type="button" class="btn btn-primary btn-collection" onclick="openAddDocumentModal()">Adicionar Documentos</button>
+
+            <!-- Subtítulo para Gestão de Tabelas -->
+            <h3>Gestão de Tabelas Pessoais</h3>
+            <button type="button" class="btn btn-primary btn-collection" onclick="openTableCollectionModal()">Criar Nova Coleção de Tabelas</button>
+            <button type="button" class="btn btn-primary btn-collection" onclick="openAddTableModal()">Adicionar Tabela à Coleção</button>        
+        </div>
+
+    </div>
+
+    <!-- Conteúdo Principal do Chat -->
+    <div class="expanded-content">
+        <!-- Contêiner de Alertas -->
+        <div id="alert-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
+    
+        <div class="header">
+            <!-- Logo e título do chat -->
+            <div class="header-left">
+                <img src="{{ url_for('static', filename='images/logo_petrobras.png') }}" alt="Logo Petrobras" class="logo">
+                <div class="header-text">
+                    <h1>Chatbot Contabilidade</h1>
+                    <p>Desenvolvido pela CONTABILIDADE/EDP/ETSI</p>
+                </div>
+            </div>
+            <!-- Nome do usuário e imagem -->
+            <div class="header-right">
+                <span class="user-profile"> USERNAME</span>
+                <img src="{{ url_for('static', filename='images/user_photo.png') }}" alt="Foto do usuário" class="user-photo">
+            </div>
+        <hr class="header-line">            
+        </div>
+        
+        <div class="chat-container" id="message-container">
+            {% for answer, status, attachment in paired_data %}
+            <div class="chat-pair">
+                <!-- Pergunta do usuário -->
+                <div class="chat-bubble user-message">{{ answer.query_input }}</div>
+        
+                <!-- Botão de status de execução -->
+                <button class="btn btn-link text-decoration-none p-0 execution-status-toggle" onclick="toggleStatus({{ loop.index }})">
+                    <i class="fas fa-eye"></i> Mostrar/Ocultar Status de Execução
+                </button>
+        
+                <!-- Status de execução -->
+                <div class="execution-status" id="status-{{ loop.index }}" style="display: {% if loop.last %}block{% else %}none{% endif %};">
+                    {% for step in status %}
+                        <p style=" {% if step.color %}color: {{ step.color }};{% endif %} {% if step.bold %}font-weight: bold;{% endif %} ">
+                            {{ step }}
+                        </p>
+                    {% endfor %}
+                </div>
+
+                <!-- Nova seção de anexos com classe específica -->
+                <button class="btn btn-link text-decoration-none p-0 attachment-toggle" onclick="toggleAttachment({{ loop.index }})">
+                    <i class="fas fa-paperclip"></i> Mostrar/Ocultar Anexos
+                </button>
+
+                <div class="attachment-section" id="attachment-{{ loop.index }}" style="display: none;">
+                    {% if attachment and attachment|length > 0 %}
+                        {% for item in attachment %}
+                            {% for agent, files in item.items() %}
+                                <p><strong>{{ agent }}</strong></p>
+                                <ul>
+                                    {% for file_dict in files %}
+                                        {% for file_name, file_content in file_dict.items() %}
+                                            <li>
+                                                <a href="#" data-filename="{{ file_name }}" data-filecontent="{{ file_content }}" onclick="downloadFile(event, this)">
+                                                    {{ file_name }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            {% endfor %}
+                        {% endfor %}
+                    {% else %}
+                        <p>Sem anexos disponíveis.</p>
+                    {% endif %}
+                </div>                   
+
+                <!-- Resposta do agente -->
+                <div class="chat-bubble agent-message" id="answer-{{ loop.index }}">
+                    {% if answer.answer == "Processando..." %}
+                        <span class="loading-indicator"></span>
+                    {% else %}
+                        {{ answer.answer | safe }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        
+        <!-- Área de input para interação do usuário com ícone de envio -->
+        <div class="input-area">
+            <form action="{{ url_for('chat') }}" method="post" class="d-flex w-100" onsubmit="return handleFormSubmit()">
+                <textarea name="user_input" class="form-control" placeholder="Faça uma pergunta ou envie um comando..." required rows="1" onkeydown="handleEnterPress(event)" autocomplete="off"></textarea>
+                <button type="submit" class="btn btn-primary" id="submit-button">
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para criação de coleção -->
+    <div id="collectionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeCollectionModal()">&times;</span>
+            <h2>Criar Nova Coleção de Dados Pessoais</h2>
+            
+            <form id="collectionForm" onsubmit="submitCollectionForm(event)">
+                <label for="nome_da_colecao">Nome da Coleção:</label>
+                <input type="text" id="nome_da_colecao" name="nome_da_colecao" required>
+                
+                <label for="table_common_name">Nome Comum da Tabela:</label>
+                <input type="text" id="table_common_name" name="table_common_name">
+
+                <label for="curator">Curador:</label>
+                <input type="text" id="curator" name="curator">
+
+                <label for="table_description">Descrição da Tabela:</label>
+                <textarea id="table_description" name="table_description"></textarea>
+
+                <label for="gpt_instructions">Instruções GPT:</label>
+                <textarea id="gpt_instructions" name="gpt_instructions"></textarea>
+
+                <button type="submit" class="btn btn-success">Criar Coleção</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar documentos -->
+    <div id="addDocumentModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddDocumentModal()">&times;</span>
+            <h2>Adicionar Documento à Coleção de Dados Pessoais</h2>
+            
+            <form id="addDocumentForm" onsubmit="submitAddDocumentForm(event)">  
+
+                <label for="nome_colecao">Nome da Coleção:</label>
+                <select id="nome_colecao" name="nome_colecao" required>
+                    {% for collection in agent_collections[personal_knowledge_agent_name] %}
+                        <option value="{{ collection }}">{{ collection }}</option>
+                    {% endfor %}
+                </select>
+                
+                <label for="file_for_doc_collection">Arquivo:</label>
+                <input type="file" id="file_for_doc_collection" name="file_for_doc_collection" required onchange="setFilePathText()">                
+
+                <!-- Outros parâmetros opcionais podem ser adicionados aqui -->
+
+                <button type="submit" class="btn btn-success">Adicionar Documento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para criação de coleção de tabelas -->
+    <div id="tableCollectionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeTableCollectionModal()">&times;</span>
+            <h2>Criar Nova Coleção de Tabelas</h2>
+            
+            <form id="tableCollectionForm" onsubmit="submitTableCollectionForm(event)">
+                <label for="nome_tabela_colecao">Nome da Coleção:</label>
+                <input type="text" id="nome_tabela_colecao" name="nome_tabela_colecao" required>
+
+                <label for="process_description">Descrição do Processo:</label>
+                <textarea id="process_description" name="process_description" required></textarea>
+
+                <label for="relationships">Relacionamentos:</label>
+                <textarea id="relationships" name="relationships" placeholder="Relacionamentos entre tabelas, se houver"></textarea>
+
+                <button type="submit" class="btn btn-success">Criar Coleção</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para adicionar uma tabela à coleção -->
+    <div id="addTableModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddTableModal()">&times;</span>
+            <h2>Adicionar Tabela à Coleção</h2>
+            
+            <form id="addTableForm" onsubmit="submitAddTableForm(event)">
+
+                <label for="tabela_colecao">Nome da Coleção:</label>
+                <select id="tabela_colecao" name="tabela_colecao" required>
+                    {% for collection in agent_collections[local_analytics_agent_name] %}
+                        <option value="{{ collection }}">{{ collection }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="file_path">Arquivo CSV:</label>
+                <input type="file" id="file_path" name="file_path" required onchange="setFilePathText()">  
+
+                <label for="table_name">Nome da Tabela:</label>
+                <input type="text" id="table_name" name="table_name" placeholder='Se não informado usa o mesmo nome do arquivo'>
+
+                <label for="column_type">Tipo de Colunas (JSON):</label>
+                <textarea id="column_type" name="column_type" placeholder='{"column1": "type1", "column2": "type2"}'></textarea>
+
+                <button type="submit" class="btn btn-success">Adicionar Tabela</button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Scripts JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

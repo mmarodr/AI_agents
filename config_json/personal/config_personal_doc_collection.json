@@ -1,0 +1,84 @@
+﻿{
+  "connection": {
+    "db_url": "sqlite:///data_base/zdb_personal_collection.db"
+  },
+  "columns": {
+    "source_col": "source",
+    "file_col": "file_as_str",
+    "context_col": "page_content",
+    "rag_col": "vector_embedding",
+    "metadata_col": "metadata_dictionary",
+    "file_base_id_col": "id",
+    "vec_base_file_id_col": "file_id"
+  },
+  "functions": {
+    "cosine": "1 - (np.dot(embedding, x) / (np.linalg.norm(embedding) * np.linalg.norm(x)))",
+    "euclidean": "np.linalg.norm(embedding - x)",
+    "manhattan": "np.sum(np.abs(embedding - x))"
+  },
+  "data_sources": {
+    "teste": {
+      "file_base": "teste_file_base",
+      "vec_base": "teste_vec_base",
+      "metadata": {
+        "columns": {
+          "file_base": {
+            "id": "Identificador único para as linhas da tabela",
+            "source": "Nome do arquivo de refeência do documento fonte",
+            "file_as_str": "Arquivo completo",
+            "metadata_dictionary": "Palavras chaves relacionadas ao documento",
+            "llm_emb_model": "Nome do modelo usado para vetorização",
+            "created_at": "Data de inserção do documento na base de dados",
+            "updated_at": "Última data de atualização do documento na base de dados"
+          },
+          "vec_base": {
+            "id": "Identificador único para as linhas da tabela",
+            "file_id": "Identificador único de referência do documento fonte",
+            "source": "Nome do arquivo de refeência do documento fonte",
+            "page_content": "Parte do texto do documento fonte para otimização das buscas do conteúdo relevante",
+            "vector_embedding": "Embedding de texto usando llm para transformar o texto em vetor",
+            "created_at": "Data de inserção do documento na base de dados",
+            "updated_at": "Última data de atualização do documento na base de dados"
+          }
+        },
+        "description": {
+          "table_common_name": "testes",
+          "curator": "teste",
+          "table_description": "testes",
+          "gpt_instructions": "testes"
+        },
+        "grants": []
+      }
+    }
+  },
+  "table_description": {
+    "teste": {
+      "table_common_name": "testes",
+      "curator": "teste",
+      "table_description": "testes",
+      "gpt_instructions": "testes"
+    }
+  },
+  "columns_description": {
+    "teste": {
+      "file_base": {
+        "id": "Identificador único para as linhas da tabela",
+        "source": "Nome do arquivo de refeência do documento fonte",
+        "file_as_str": "Arquivo completo",
+        "metadata_dictionary": "Palavras chaves relacionadas ao documento",
+        "llm_emb_model": "Nome do modelo usado para vetorização",
+        "created_at": "Data de inserção do documento na base de dados",
+        "updated_at": "Última data de atualização do documento na base de dados"
+      },
+      "vec_base": {
+        "id": "Identificador único para as linhas da tabela",
+        "file_id": "Identificador único de referência do documento fonte",
+        "source": "Nome do arquivo de refeência do documento fonte",
+        "page_content": "Parte do texto do documento fonte para otimização das buscas do conteúdo relevante",
+        "vector_embedding": "Embedding de texto usando llm para transformar o texto em vetor",
+        "created_at": "Data de inserção do documento na base de dados",
+        "updated_at": "Última data de atualização do documento na base de dados"
+      }
+    }
+  }
+}

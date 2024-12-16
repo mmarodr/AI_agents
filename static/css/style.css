@@ -1,0 +1,569 @@
+/* Estilos gerais */
+body {
+    display: flex;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Sidebar - Menu sanduíche fino com ícones */
+.sidebar {
+    background-color: #2c3e50;
+    color: white;
+    width: 60px;
+    padding: 10px;
+    transition: width 0.3s ease;
+    overflow: hidden;
+    border-right: 2px solid #2c3e50; /* Borda direita quando recolhida */
+}
+
+.sidebar.expanded {
+    width: 220px;
+    border-right: none; /* Remove a borda ao expandir */
+}
+
+.menu-toggle {
+    cursor: pointer;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.sidebar-content .menu-item {
+    cursor: pointer;
+    padding: 10px 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-content .menu-item i {
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+.sidebar-content .menu-item span {
+    display: none; /* Esconde o texto ao estar colapsado */
+}
+
+.sidebar.expanded .menu-item span {
+    display: inline; /* Mostra o texto ao expandir */
+}
+
+/* Barra lateral de informações com redimensionamento e botão de ocultar */
+.info-sidebar {
+    background-color: #ecf0f1;
+    padding: 20px;
+    width: 300px;
+    resize: horizontal; /* Permite redimensionar horizontalmente */
+    overflow: auto;
+    min-width: 50px; /* Permite recolher parcialmente */
+    transition: width 0.3s ease;
+    position: relative; /* Para posicionamento do botão de ocultar */
+}
+
+.info-sidebar.hidden {
+    width: 50px;
+    overflow: hidden;
+    padding: 0; /* Remove o padding ao esconder */
+}
+
+/* Botão circular para recolher/expandir a barra de opções */
+.info-sidebar .toggle-button {
+    position: absolute;
+    top: 50%;
+    right: -15px;
+    transform: translateY(-50%);
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 16px;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.info-sidebar .toggle-button:hover {
+    background-color: #34495e;
+}
+
+.info-sidebar.hidden .toggle-button {
+    transform: translateY(-50%) rotate(180deg); /* Altera a direção da seta ao recolher */
+}
+
+/* Conteúdo principal */
+.expanded-content {
+    flex: 1;
+    padding: 20px;
+}
+
+/* Contêiner de Alertas */
+#alert-container .alert {
+    min-width: 250px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Define altura fixa para a área de input */
+.input-area textarea {
+    max-height: 150px;
+    height: 40px;
+    overflow-y: auto; /* Limita o overflow interno */
+}
+
+/* Ajustes na área do chat para ocupar toda a altura disponível */
+.chat-container {
+    overflow-y: auto;
+    max-height: calc(100vh - 250px); /* Ajusta a altura para a tela */
+    height: 100%;
+}
+
+/* Bolhas de mensagem */
+.chat-bubble {
+    margin: 10px;
+    padding: 10px 15px;
+    border-radius: 15px;
+}
+
+    /* Botão de exibição de status com ícone */
+    .execution-status-toggle {
+        color: #4a90e2;
+        font-size: 14px;
+        text-decoration: none;
+    }
+
+    .execution-status-toggle:hover {
+        text-decoration: underline;
+    }
+
+    /* Estilo para a seção de execução */
+    .execution-status {
+        transition: max-height 0.3s ease-in-out;
+        overflow: hidden;
+        background-color: #d5e5f4; /* Fundo claro */
+        padding: 10px;
+        margin: 10px;
+        border-radius: 10px;
+    }
+
+    /* Estilo para a seção de anexos, igual ao estilo de execução */
+    .attachment-section {
+        transition: max-height 0.3s ease-in-out;
+        overflow: hidden;
+        background-color: #d5e5f4; /* Fundo claro */
+        padding: 10px;
+        margin: 10px;
+        border-radius: 10px;
+    }
+
+/* Placeholder mais intuitivo */
+textarea::placeholder {
+    color: #888;
+}
+
+/* Estilo da área de input expansível */
+textarea {
+    max-height: 150px; /* Limita o crescimento vertical */
+    overflow-y: hidden;
+    resize: none; /* Desabilita o redimensionamento manual */
+}
+
+/* Área de input para interação do usuário */
+.input-area {
+    display: flex;
+    padding-top: 10px;
+    margin-top: 20px; /* Adiciona espaço acima da área de input */
+}
+
+/* Classes para alinhar caixa de seleção e texto na mesma linha para agentes e coleções */
+.agent-selection, .collection-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+/* Espaçamento entre checkbox e label */
+.agent-selection input[type="checkbox"],
+.collection-item input[type="checkbox"] {
+    margin-right: 5px;
+    margin-top: 0;
+    margin-bottom: 0;
+    vertical-align: middle;
+    height: 16px;
+    width: 16px;
+}
+
+/* Ajusta o alinhamento vertical do label */
+.agent-selection label,
+.collection-item label {
+    margin: 0;
+    line-height: 1.2;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Ajusta a aparência dos títulos das coleções */
+.collection-selection h4 {
+    margin-bottom: 10px;
+    font-size: 1rem;
+    color: #34495e;
+}
+
+/* Indentação opcional para coleções */
+.collection-selection {
+    margin-left: 0px; /* Indentação para diferenciar das listas de agentes */
+}
+
+/* Garantir que as coleções fiquem empilhadas verticalmente */
+.collection-selection {
+    display: block;
+}
+
+/* Estilos de hover para agentes */
+.agent-selection:hover {
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 2px 5px;
+}
+
+/* Estilos de hover para coleções */
+.collection-item:hover {
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 2px 5px;
+}
+
+/* Opcional: estilos adicionais para melhorar a aparência */
+.collection-selection .collection-item:hover {
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    padding: 2px 5px;
+}
+
+/* Garantir que os títulos do cabeçalho não afetem o alinhamento */
+.header h1 {
+    font-size: 2rem;           /* Tamanho grande para destaque */
+    font-weight: bold;         /* Negrito para dar ênfase */
+    color: rgb(24, 91, 64);    /* Cor do texto em branco para contraste */
+    text-align: center;        /* Centralizado */
+    margin: 0;                 /* Remove margens extras */
+    padding: 10px 0;           /* Espaçamento vertical */
+    letter-spacing: 1px;       /* Espaçamento entre letras para melhor legibilidade */
+    text-transform: uppercase; /* Coloca o texto em maiúsculas para maior impacto */
+}
+
+/* Estilos de títulos com tamanhos diferenciados */
+h2 {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #34495e;
+    margin-bottom: 20px; /* Espaçamento maior abaixo do h2 */
+}
+
+h3 {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #34495e;
+    margin-top: 20px; /* Espaçamento maior acima do h3 */
+    margin-bottom: 10px; /* Espaçamento entre o h3 e elementos abaixo */
+}
+
+h4 {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #34495e;
+    margin-top: 15px; /* Ajuste o espaçamento conforme necessário */
+    margin-bottom: 8px;
+}
+
+/* Texto explicativo menor e mais sutil */
+.info-sidebar p {
+    font-size: 0.875rem; /* Tamanho de fonte menor para o texto explicativo */
+    color: #7f8c8d;
+    margin-bottom: 12px;
+}
+
+/* Indicador de carregamento em pontos */
+.loading-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #4a90e2;
+    animation: blink 1.5s infinite ease-in-out;
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 0.2;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.user-message {
+    background-color: #4a90e2;
+    color: #ffffff;
+    text-align: left;
+    border-radius: 15px 15px 0 15px;
+    margin-right: auto;
+}
+
+.agent-message {
+    background-color: #f0f0f0; /* Cinza claro */
+    color: #333333; /* Texto em cinza escuro para contraste */
+    text-align: left;
+    border-radius: 15px 15px 15px 0;
+    margin-left: auto;
+}
+
+/* Estilo para o modal */
+.modal {
+    display: none; /* Esconde o modal inicialmente */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+    align-items: center; /* Centraliza verticalmente */
+    justify-content: center; /* Centraliza horizontalmente */
+    display: flex; /* Flex para centralização */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%;
+    max-width: 600px;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+}
+
+.modal h2 {
+    margin-top: 0;
+}
+
+.modal label {
+    display: block;
+    margin: 15px 0 5px;
+}
+
+.modal input, .modal textarea {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Estilo para o botão "Criar Nova Coleção" dentro da barra lateral */
+.btn-collection {
+    display: block;
+    width: 100%;
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    border: none;
+    text-align: center;
+    margin-top: 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+/* Estilos para o cabeçalho */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #f9f9f9;
+}
+
+/* Estilo para a seção à esquerda do cabeçalho */
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+/* Logo da Petrobras */
+.logo {
+    height: 40px;
+    margin-right: 15px;
+}
+
+/* Texto do cabeçalho (título e descrição) */
+.header-text h1 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #173e43;
+    margin: 0;
+}
+
+.header-text p {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 5px 0 0;
+}
+
+/* Estilo para a seção à direita do cabeçalho */
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+/* Nome do perfil */
+.user-profile {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #666;
+    margin-right: 10px;
+}
+
+/* Foto do usuário */
+.user-photo {
+    height: 35px;
+    width: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #ccc;
+}
+
+/* Linha divisória suave abaixo do cabeçalho */
+.header-line {
+    border: none;
+    height: 1px;
+    background-color: #ddd;
+    margin: 0;
+}
+
+/* CSS para o bloco de código */
+.code-block {
+    background-color: #f8f9fa; /* Fundo leve */
+    padding: 10px;
+    border-radius: 5px;
+    font-family: 'Courier New', Courier, monospace;
+    white-space: pre-wrap; /* Permite quebra de linha */
+    color: #fbf7f7;
+    border: 1px solid #ddd; /* Borda sutil */
+}
+
+pre.python, code.python {
+    background-color: #f8f9fa; /* Fundo leve */
+    padding: 10px;
+    border-radius: 5px;
+    font-family: 'Courier New', Courier, monospace;
+    white-space: pre-wrap; /* Permite quebra de linha */
+    color: #fbf7f7;
+    border: 1px solid #ddd; /* Borda sutil */
+}
+
+/* Estilos para contêiner de código */
+.code-container {
+    position: relative;
+    background-color: #e0e0e0; /* Fundo levemente escuro */
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden; /* Remove qualquer rolagem extra */
+}
+
+/* Botão de copiar */
+.copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.copy-btn:hover {
+    background-color: #45a049;
+}
+
+/* Bloco de código */
+.code-container .code-block code, 
+/* .code-block pre,  */
+.code-block code {
+    background-color: #d6d6d6;
+    padding: 8px 8px;
+    border-radius: 5px;
+    font-family: 'Courier New', Courier, monospace;
+    color: #000000;
+    border: 0px solid #ccc;
+    white-space: pre-wrap;
+    font-size: 1em;
+    overflow-x: auto;
+    /* margin: 0; Remove margens extras */
+    line-height: 1.4;
+    margin: 5px;
+}
+
+/* Remover margens e espaçamento extra */
+.code-container .code-block code {
+    padding: 0;
+    margin: 5px;
+    background: none; /* Remove fundo adicional do <code> */
+    display: block; /* Garante que o código ocupe toda a largura */
+}
+
+#chat-list-container .list-group-item {
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    background-color: #f8f9fa;
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+#chat-list-container .list-group-item:hover {
+    background-color: #e2e6ea;
+}
+
+#chat-list-container .btn-link {
+    font-size: 14px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+#chat-list-container .btn-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.list-group-item.selected {
+    background-color: #007bff; /* Cor de fundo de destaque */
+    color: white; /* Cor do texto */
+    font-weight: bold; /* Deixe o texto em negrito para destacar */
+}
