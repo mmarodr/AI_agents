@@ -44,7 +44,33 @@ Outros ganhos relevantes com o desenvolvimento interno incluem:
 
 ### Abstract
 
-texto
+The increasing affordability and availability of various **Large Language Model (LLM)** services have made their use popular among both experienced and novice programmers. Even in large corporations such as **Petrobras**, with well-defined structures, it is impossible to prevent LLM initiatives from emerging outside the **Information Technology (IT)** department. Thus, aligning with this trend, Petrobras encourages its non-technical areas to explore the use and enhancement of LLM-based processes.
+
+During the first phase of this project, a chatbot capable of using **RAG** (*Retrieval-Augmented Generation*) with the company's internal documents was delivered to the **Accounting department**. However, this method proved incomplete in meeting the needs of managers and analysts.
+
+The goal was to enable the chatbot to interpret the analyst’s input and determine the best course of action. This could involve the use of RAG but also other requirements such as:
+
+- Database statistics;
+- Interpretation of extensive documents;
+- Assistance in database searches;
+- Interpretation of results;
+- Mathematical calculations;
+- Short- and long-term memory management;
+- Direct interaction for responding to a simple "good morning."
+
+Given the number of possible alternatives, relying solely on prompt-based commands became impractical, making **agents** the best solution.
+
+This project represents the conclusion regarding the most viable approach found for the Accounting department in using an AI-driven chatbot.
+
+The decision to develop a **custom framework** was driven by two major factors:
+
+1. **Custom connectors**: Establishing connections in the company's restricted environments may require customizations that are not always easily integrable with market frameworks.
+2. **Agent-specific workflows**: Agents follow flows designed by their creators, which may not align with a predefined workflow of a particular activity.
+Other significant benefits of internal development include:
+
+- **Precise control over data traffic**, ensuring only the necessary tokens are sent to the LLM at each stage of the process.
+- **Flexibility to implement new techniques** without relying on updates from third-party frameworks.
+- **Straightforward and accessible code** for non-programmers, making it easier for professionals outside the IT field to read and understand.
 
 ### 1. Introdução
 
@@ -239,7 +265,7 @@ Com a ampliação e disponibilização da aplicação e bases de conhecimento, �
 Além disso, continuarão sendo desenvolvidas funcionalidades facilitadoras que estão mapeadas e precisam de maiores testes e desenvolvimento.
 
 Nesse link gravei um vídeo da aplicação em funcionamento para visualização das funcionalidades disponíveis:
-[Chat Contabilidade](https://youtube.com)
+[Chat Contabilidade](https://youtube.com/@mmarodr)
 
 ### 4. Conclusões
 
