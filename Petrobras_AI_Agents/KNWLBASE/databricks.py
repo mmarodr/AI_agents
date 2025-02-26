@@ -7,19 +7,18 @@ from typing import Union, Callable, List, Dict, Optional, Any
 from .base import BaseKnowledgeBaseManager
 import os
 
-from Petrobras_AI_Agents.READERS import read_file
-
-from dotenv import load_dotenv
-load_dotenv()
-
 import logging
 
 logger = logging.getLogger(__name__)
 
+from Petrobras_AI_Agents.READERS import read_file
+from Petrobras_AI_Agents.CONNECTORS import databricks_connector
+from typing import Callable
+
 class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
 
     config_file = ""
-    
+     
     @classmethod
     def create_config_file(
         cls,
@@ -57,7 +56,7 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
                     },
                 "users_access": {
                     "table":  users_access_table_name,
-                    "profile_prefix ": users_access_profile_prefix
+                    "profile_prefix": users_access_profile_prefix
                     },
                 "columns":
                     {
@@ -109,40 +108,32 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
         with open(config_json, 'w', encoding='utf-8-sig') as arquivo:
             json.dump(config, arquivo, indent=2, ensure_ascii=False)
          
-    def __init__(self, user, config_json=None, connection=None):
+    def __init__(self, user=None, config_json=None, connection_as_function:Callable=None):
         config_json = config_json or self.__class__.config_file
         
-        self.connection = connection or self._create_connection()
-        super().__init__(config_json=config_json)
+        self.connection_as_function:Callable = connection_as_function
+        
+        # self.connection = connection
+        super().__init__(config_json=config_json, user=user)
         
         self._ajust_grants_to_profile_id()
-        self.available_collections = self._get_access_profile(user)
+        self.available_collections = self.get_available_collections(user)
+                    
+    @property
+    def connection(self):
+        """Retorna a conexão, criando-a apenas se necessário."""
+        server_hostname=self.config["connection"]["server_hostname"]
+        http_path=self.config["connection"]["http_path"]
+        user = self.user
+        return self.connection_as_function(server_hostname=server_hostname, http_path=http_path, user=user)
 
     def _get_dynamic_classes(self, collection_name, table_description=None):
         return {}       
-    
-    def _create_connection(self):
+          
+    def _get_metadata_from_table(self, collection_name, connection=None):
         
-        if not hasattr(self, 'connection') or self.connection is None:
-            print("create connection")
-            access_token = os.getenv('DATABRICKS_CONN_TOKEN')
-            try:
-                connection = dbks_sql.connect(
-                                server_hostname = self.config["connection"]["server_hostname"],
-                                http_path = self.config["connection"]["http_path"] ,
-                                access_token = access_token)                 
-                print('Conected to Databricks')
-                return connection
-            except: 
-                print('Connection fail')
-                return
-        return self.connection
-            
-    def _get_metadata_from_table(self, collection_name):
-        logger.debug(f'get_metadata from {collection_name}')
-        
-        # Verifica se a conexão já existe antes de criar uma nova
-        self.connection = self._create_connection()
+        # Verifica se a conexão já existe antes de criar uma nova 
+        connection = connection or self.connection
         
         metadata = super()._get_metadata_from_table()
 
@@ -150,7 +141,7 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
               
         try: # Acessing the table description
             table = tables["file_base"]
-            cursor = self.connection.cursor()
+            cursor = connection.cursor()
             cursor.execute(f"DESCRIBE DETAIL {table}")
             result = cursor.fetchall()[0]['description'].replace("\\'", "'")
             metadata_dic_descr = result
@@ -164,7 +155,7 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
             
         try:  # Acessando os Grants na tabela
             table = tables["file_base"]
-            cursor = self.connection.cursor()
+            cursor = connection.cursor()
             cursor.execute(f"SHOW GRANTS ON TABLE {table}")
             result = cursor.fetchall()
             grants = list(set([row[0] for row in result]))  # Acessa a primeira coluna de cada linha (ajuste conforme necessário)
@@ -179,7 +170,7 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
         # Acessing the table columns metadata
         try: 
             metadata_dic_col = {}
-            cursor = self.connection.cursor()
+            cursor = connection.cursor()
             
             table = tables["file_base"]
             cursor.execute(f"DESCRIBE {table}")
@@ -198,17 +189,17 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
             try: cursor.close()
             except: pass
         
-        
-        
         metadata["columns"] = metadata_dic_col
         metadata["description" ] = metadata_dic_descr
         metadata["grants"] = grants
 
         return metadata
 
-    def get_table(self, sql_query=None, table=None):
+    def get_table(self, sql_query=None, table=None, connection=None):
         
-        cursor = self.connection.cursor()
+        connection = connection or self.connection
+        
+        cursor = connection.cursor()
         
         if sql_query is None: sql_query = f'SELECT * FROM {table}'
         cursor.execute(sql_query)
@@ -216,15 +207,19 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
 
         return result
     
-    def get_table_as_dictionary(self, sql_query=None, table=None):
+    def get_table_as_dictionary(self, sql_query=None, table=None, connection=None):
+        
+        connection = connection or self.connection
 
-        result = self.get_table(sql_query=sql_query, table=table)
+        result = self.get_table(sql_query=sql_query, table=table, connection=connection)
         rows_as_dict = [row.asDict() for row in result]
         
         return rows_as_dict
 
-    def similarity_search(self, collection_name:str, embedding, k: int = 10, filters:str = None, distance_strategy='cosine'):
+    def similarity_search(self, collection_name:str, embedding, k: int = 10, filters:str = None, distance_strategy='cosine', connection=None):
 
+        connection = connection or self.connection
+        
         select_clause, from_clause, where_clause = super().similarity_search(collection_name, embedding, k, filters, distance_strategy)
         
         # Convertendo o embedding para um formato que pode ser usado na consulta SQL
@@ -241,11 +236,13 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
             LIMIT {k}
         """
         
-        results = self.get_table_as_dictionary(sql_query)
+        results = self.get_table_as_dictionary(sql_query=sql_query, connection=connection)
 
         return results
 
-    def retrieve_full_documents(self, collection_name, filters, read_file_class:read_file=read_file, k=5, words_per_chunk=2500, overlap=25):
+    def retrieve_full_documents(self, collection_name, filters, read_file_class:read_file=read_file, k=5, words_per_chunk=2500, overlap=25, connection=None):
+        
+        connection = connection or self.connection
         
         select_clause, from_clause, where_clause = super().retrieve_full_documents(collection_name, filters, read_file_class, k, words_per_chunk, overlap)
         
@@ -256,7 +253,7 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
             LIMIT {k}
         """
         
-        results = self.get_table_as_dictionary(sql_query)
+        results = self.get_table_as_dictionary(sql_query=sql_query, connection=connection)
         
         documents = {}
         for row in results:
@@ -272,7 +269,7 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
         profile_table = [{"profile_id": 999999, "collection": ""}]
         for table in self.config["data_sources"]:
 
-            profile_prefix = self.config["users_access"]["profile_prefix "]
+            profile_prefix = self.config["users_access"]["profile_prefix"]
 
             self.config["data_sources"][table]['metadata']['grants'] = [
                 int(profile[len(profile_prefix ):]) 
@@ -287,27 +284,45 @@ class KnowledgeBaseManager_Databricks(BaseKnowledgeBaseManager):
         profile_table = pd.DataFrame(profile_table)
         self._profile_table = profile_table.drop_duplicates(subset=['profile_id', 'collection'])
           
-    def _get_access_profile(self, user):
+    def get_available_collections(self, user=None, connection=None, print_sql=False) -> List:
+        
+        connection = connection or self.connection
+        user = user or self.user
+        
         table = self.config["users_access"]["table"]
         
         profile_ids = ','.join(map(str, self._profile_table['profile_id'].tolist()))
 
+        if user:
+            user_line = f"AND VWRP_CD_ELEMENTO = '{user.upper()}'"
+        else:
+            user_line = ""
+            
         sql = f'''
-        SELECT PEPA_CD_PERFIL_PLATAFORMA as profile_id, VWRP_CD_ELEMENTO as user
+        SELECT DISTINCT PEPA_CD_PERFIL_PLATAFORMA as profile_id, VWRP_CD_ELEMENTO as user
         FROM {table}
         WHERE PEPA_CD_PERFIL_PLATAFORMA IN ({profile_ids})
-        AND VWRP_CD_ELEMENTO = '{user.upper()}'
+        {user_line}
         '''
-        result = self.get_table_as_dictionary(sql)
+        
+        if print_sql: print(f"KnowledgeBaseManager_Databricks: SQL:\n {sql}", flush=True)
+        
+        result = self.get_table_as_dictionary(sql_query=sql, connection=connection)
+        
         if not result: result_df = pd.DataFrame(columns=["profile_id", "user"])
         else: result_df = pd.DataFrame(result)
+        
+        if print_sql: print(f"KnowledgeBaseManager_Databricks: result SQL:\n{result}", flush=True)
+        
         result_df = pd.merge(
-            self._profile_table, 
+            self._profile_table,
             result_df, 
             on='profile_id', 
             how='inner'
         )
 
         result_df = result_df['collection'].unique().tolist()
+        
+        if print_sql: print(f"KnowledgeBaseManager_Databricks: result:\n{result_df}", flush=True)
         
         return result_df

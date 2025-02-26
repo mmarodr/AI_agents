@@ -1,0 +1,224 @@
+* {
+  margin: 0;
+  padding: 0;
+  font-family: 'Petrobras Sans';
+  outline: none;
+}
+
+@keyframes animate-fade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+html {
+  height: 100vh;
+}
+
+body {
+  background-color: #fff;
+  color: #444;
+  height: calc(100vh);
+  overflow-y: hidden;
+  display: flex;
+}
+
+.sidebar {
+  background-color: #2c3e50;
+  color: white;
+  width: 60px;
+  padding: 10px;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  border-right: 2px solid #2c3e50; /* Borda direita quando recolhida */
+}
+
+.sidebar.expanded {
+  width: 220px;
+  border-right: none; /* Remove a borda ao expandir */
+}
+
+.menu-toggle {
+  cursor: pointer;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.sidebar-content .menu-item {
+  cursor: pointer;
+  padding: 10px 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-content .menu-item i {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+.sidebar-content .menu-item span {
+  display: none; /* Esconde o texto ao estar colapsado */
+}
+
+.sidebar.expanded .menu-item span {
+  display: inline; /* Mostra o texto ao expandir */
+}
+
+aside {
+  height: 100%;
+  width: 27%;
+  max-width: 20rem;
+  background-color: #008542;
+  display: flex;
+  color: white;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+aside a {
+  padding: 1rem;
+}
+
+aside a:hover {
+  color: blue;
+}
+
+aside>div:last-child {
+  padding: 1rem;
+}
+
+aside img {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Garante que os itens se estendam para ocupar a largura total */
+  justify-content: space-between;
+  width: 100%;
+  height: 100%; /* Alterado para 100% para preencher o contêiner pai */
+}
+
+.system-name {
+  border-left: 1px solid #dee2e6; /* Borda à esquerda */
+  padding: 0 1rem; /* Espaçamento lateral */
+  display: flex; /* Flexbox para alinhar itens no sistema */
+  align-items: center; /* Centraliza verticalmente */
+}
+
+#logo-name {
+  display: flex;
+  align-items: center; /* Centraliza o logo verticalmente */
+  gap: 0.8rem; /* Espaçamento entre o logo e o nome */
+  margin-bottom: 0.5rem; /* Espaço inferior para separação */
+}
+
+#logo-name img {
+  height: 36px; /* Altura do logo */
+}
+
+.subtitle {
+  color: #6a7178; /* Cor do subtítulo */
+  font-size: 0.8rem; /* Tamanho da fonte do subtítulo */
+  margin-top: 0; /* Remove margens para melhor alinhamento */
+}
+
+#user-photo {
+  display: block; /* Exibe o bloco */
+  width: 32px; /* Largura do foto do usuário */
+  height: 32px; /* Altura do foto do usuário */
+  border-radius: 50%; /* Torna o foto do usuário redondo */
+  border: 1px solid #dee2e6; /* Borda ao redor do foto do usuário */
+  margin-left: auto; /* Alinha o foto do usuário à direita */
+}
+
+/* Ajustes na área do chat para ocupar toda a altura disponível */
+.chat-container {
+  overflow-y: auto;
+  max-height: calc(100vh - 250px); /* Ajusta a altura para a tela */
+  height: 100%;
+}
+
+/* Bolhas de mensagem */
+.chat-bubble {
+  margin: 10px;
+  padding: 10px 15px;
+  border-radius: 15px;
+}
+
+  /* Botão de exibição de status com ícone */
+  .execution-status-toggle {
+      color: #4a90e2;
+      font-size: 14px;
+      text-decoration: none;
+  }
+
+  .execution-status-toggle:hover {
+      text-decoration: underline;
+  }
+
+  /* Estilo para a seção de execução */
+  .execution-status {
+      transition: max-height 0.3s ease-in-out;
+      overflow: hidden;
+      background-color: #d5e5f4; /* Fundo claro */
+      padding: 10px;
+      margin: 10px;
+      border-radius: 10px;
+  }
+
+  /* Estilo para a seção de anexos, igual ao estilo de execução */
+  .attachment-section {
+      transition: max-height 0.3s ease-in-out;
+      overflow: hidden;
+      background-color: #d5e5f4; /* Fundo claro */
+      padding: 10px;
+      margin: 10px;
+      border-radius: 10px;
+  }
+
+  .user-message {
+    background-color: #4a90e2;
+    color: #ffffff;
+    text-align: left;
+    border-radius: 15px 15px 0 15px;
+    margin-right: auto;
+}
+
+.agent-message {
+    background-color: #f0f0f0; /* Cinza claro */
+    color: #333333; /* Texto em cinza escuro para contraste */
+    text-align: left;
+    border-radius: 15px 15px 15px 0;
+    margin-left: auto;
+}
+
+
+
+/* Define altura fixa para a área de input */
+.input-area textarea {
+  max-height: 150px;
+  height: 40px;
+  overflow-y: auto; /* Limita o overflow interno */
+}
+
+/* Placeholder mais intuitivo */
+textarea::placeholder {
+  color: #888;
+}
+
+/* Estilo da área de input expansível */
+textarea {
+  max-height: 150px; /* Limita o crescimento vertical */
+  overflow-y: hidden;
+  resize: none; /* Desabilita o redimensionamento manual */
+}
+
+/* Área de input para interação do usuário */
+.input-area {
+  display: flex;
+  padding-top: 10px;
+  margin-top: 20px; /* Adiciona espaço acima da área de input */
+}

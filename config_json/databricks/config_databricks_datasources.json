@@ -1,7 +1,7 @@
 ﻿{
   "connection": {
-    "server_hostname": "Digite aqui seu server_hostname",
-    "http_path": "digite aqui ser http_path" 
+    "server_hostname": "adb-671799829240675.15.azuredatabricks.net",
+    "http_path": "/sql/1.0/warehouses/1fd972f888afd086"
   },
   "users_access": {
     "table": "dtcore_prd.aida.acesso_usuario",

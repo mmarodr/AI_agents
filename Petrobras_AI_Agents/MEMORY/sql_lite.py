@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
     
-    def __init__(self, db_url=None, chat_title=None, user=None, language=None, chat_id=None):
+    def __init__(self, db_path:str=None, chat_title=None, user=None, language=None, chat_id=None):
         
-        db_url = db_url or "sqlite:///zdb_memory.db"
-        db_path = db_url.replace("sqlite:///", "")
+        db_path = db_path or "zdb_memory.db"
+        db_path = db_path.replace('\\', '/')
+        db_url = f"sqlite:///{db_path}"
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         
         self.user = user
@@ -33,17 +34,10 @@ class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
         self.SessionFactory = sessionmaker(bind=self.engine)
 
         if chat_id:
-            # Tenta carregar um chat existente se chat_id for fornecido
-            self.chat_id = self._get_existing_chat(chat_id)
-
-            if self.chat_id:
-                # Recupera a última mensagem e ordem
-                self.message_id, self.message_order = self._get_last_message(chat_id)
-            else:
-                raise ValueError(f"Chat ID {chat_id} não encontrado no banco de dados.")
+            self.update_chat_id()
         else:
             # Cria um novo chat, chat_title pode ser None
-            self.create_new_chat(user=self.user, language=self.language, chat_title=chat_title)
+            self.create_new_chat(user=self.user, language=self.language, chat_title=chat_title) # create a self.chat_id
             
         self._delete_empty_chats()
         
@@ -65,6 +59,14 @@ class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
         finally:
             session.close()
 
+    def update_chat_id(self, chat_id):
+        self.chat_id = self._get_existing_chat(chat_id)
+
+        if self.chat_id:
+            self.message_id, self.message_order = self._get_last_message(chat_id)
+        else:
+            raise ValueError(f"Chat ID {chat_id} não encontrado no banco de dados.")
+        
     def create_new_chat(self, user, language, chat_title=None):
         """Cria uma nova entrada na tabela ChatHistory. chat_title pode ser None."""
         chat_title = chat_title or generate_default_title()
@@ -120,6 +122,7 @@ class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
         self.message_order += 1  # Incrementa o order da mensagem
         with self.session_scope() as session:
             new_message = ChatMessage(
+                user=self.user,
                 related_chat_id=self.message_id,  # ID da última mensagem
                 chat_id=self.chat_id,
                 order=self.message_order
@@ -152,7 +155,7 @@ class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
             )
             session.add(new_agency_flow)
 
-    def update_message(self, user_query=None, final_answer=None, chat_screem=None, tool_result=None):
+    def update_message(self, user_query=None, final_answer=None, screem_presentation=None, tool_result_for_chat=None):
         """
             Atualiza os campos de ChatMessage e encerra a sessão.
             Atualiza a última mensagem (self.message_id).
@@ -165,8 +168,8 @@ class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
             if message:
                 if user_query  : message.user_query   = user_query
                 if final_answer: message.final_answer = final_answer
-                if chat_screem : message.chat_screem  = chat_screem
-                if tool_result : message.tool_result  = tool_result
+                if screem_presentation  : message.screem_presentation  = screem_presentation
+                if tool_result_for_chat : message.tool_result_for_chat = tool_result_for_chat
                     
     def delete_chat_history(self, chat_id):
 
@@ -202,21 +205,40 @@ class ChatDatabaseManager_SQLite(BaseChatDatabaseManager):
                         .order_by(ChatHistory.created_at.desc()).all()
             return [{'chat_id': chat.chat_id, 'chat_title': chat.chat_title} for chat in chats]
 
-    def update_chat_history(self, chat_id=None, chat_title=None):
+    def update_chat_history(self, chat_id=None, chat_title=None, star_status=None):
         chat_id = chat_id or self.chat_id
         with self.session_scope() as session:
             chat = session.query(ChatHistory).filter_by(chat_id=chat_id).first()
             if chat:
                 chat_title = chat_title or chat.chat_title
                 if chat_title : chat.chat_title = chat_title
-    
-    def get_chat_history(self, chat_id):
+
+    def update_chat_history(self, chat_id=None, chat_title=None, agent_prompt=None, star_status=None):
+        """Atualiza o título e/ou o status de estrela de um chat no SQLite."""
+        chat_id = chat_id or self.chat_id
+        with self.session_scope() as session:
+            chat = session.query(ChatHistory).filter_by(chat_id=chat_id).first()
+            if chat:
+                if chat_title:
+                    chat.chat_title = chat_title  # Atualiza o título do chat
+                if star_status is not None:
+                    chat.starry = star_status
+                if agent_prompt is not None:
+                    chat.agent_prompt = agent_prompt                    
+                    
+    def get_chat_history(self, chat_id=None):
         """Recupera uma entrada de ChatHistory pelo ID do chat."""
+        
+        chat_id = chat_id or self.chat_id
+        
         with self.session_scope() as session:
             return session.query(ChatHistory).filter_by(chat_id=chat_id).first()
 
-    def get_chat_messages(self, chat_id, limit=10, columns=None):
+    def get_chat_messages(self, chat_id=None, limit=10, columns=None):
         """Recupera as mensagens do chat especificado com um limite e colunas opcionais."""
+        
+        chat_id = chat_id or self.chat_id
+        
         with self.session_scope() as session:
             # Se nenhuma coluna for especificada, retorna todas as colunas
             if columns is None:

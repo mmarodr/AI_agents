@@ -1,11 +1,11 @@
 ﻿{
   "connection": {
-    "server_hostname": "Digite aqui seu server_hostname",
-    "http_path": "digite aqui ser http_path" 
+    "server_hostname": "adb-671799829240675.15.azuredatabricks.net",
+    "http_path": "/sql/1.0/warehouses/1fd972f888afd086"
   },
   "users_access": {
     "table": "dtcore_prd.aida.acesso_usuario",
-    "profile_prefix ": "GDB_DLKC_PRD_PFL_"
+    "profile_prefix": "GDB_DLKC_PRD_PFL_"
   },
   "columns": {
     "source_col": "source",
@@ -28,6 +28,10 @@
     "normas_contabeis": {
       "file_base": "dt0047_prd.chat_bot.normas_contabeis_guia_de_normas_file_base",
       "vec_base": "dt0047_prd.chat_bot.normas_contabeis_guia_de_normas_vec_base"
+    },
+    "apontamento_hh_parcerias": {
+      "file_base": "dt0047_prd.chat_bot.parcerias_apontamentohoras_file_base",
+      "vec_base": "dt0047_prd.chat_bot.parcerias_apontamentohoras_vec_base"
     }
   }
 }

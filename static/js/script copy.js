@@ -13,6 +13,9 @@ function showContent(sectionId) {
     localStorage.setItem('selectedSection', sectionId);
 }
 
+
+
+
 // Restaura a seção selecionada ao carregar a página
 function restoreSelectedSection() {
     const selectedSection = localStorage.getItem('selectedSection') || 'home';
@@ -140,34 +143,30 @@ function checkForCompletion() {
 
             // Processando os anexos
             let attachmentContent = '';
-
-            if (attachment && Object.keys(attachment).length > 0) {
-                for (const [agent, files] of Object.entries(attachment)) {
-                    attachmentContent += `<p><strong>${agent}:</strong></p>`;
-            
-                    if (files === "" || !files) {
-                        attachmentContent += '<p>Sem anexos disponíveis.</p>';
-                    } else if (typeof files === 'object') {
+            if (attachment && attachment.length > 0) {
+                attachment.forEach(item => {
+                    for (const [agent, files] of Object.entries(item)) {
+                        attachmentContent += `<p><strong>${agent}:</strong></p>`;
                         attachmentContent += '<ul>';
-                        for (const [fileName, fileContent] of Object.entries(files)) {
-                            attachmentContent += `
-                                <li>
-                                    <a href="#" data-filename="${fileName}" data-filecontent="${fileContent}" onclick="downloadFile(event, this)">
-                                        ${fileName}
-                                    </a>
-                                </li>
-                            `;
-                        }
+                        files.forEach(fileDict => {
+                            for (const [fileName, fileContent] of Object.entries(fileDict)) {
+                                // Criação do link de download com atributos de filename e filecontent
+                                attachmentContent += `
+                                    <li>
+                                        <a href="#" data-filename="${fileName}" data-filecontent="${fileContent}" onclick="downloadFile(event, this)">
+                                            ${fileName}
+                                        </a>
+                                    </li>
+                                `;
+                            }
+                        });
                         attachmentContent += '</ul>';
-                    } else {
-                        attachmentContent += '<p>Sem anexos disponíveis.</p>';
                     }
-                }
+                });
             } else {
                 attachmentContent = '<p>Sem anexos disponíveis.</p>';
             }
-            
-            
+
             // Adiciona cada par de pergunta/resposta e o status de execução correspondente
             messageContainer.append(`
                 <div class="chat-pair">
@@ -682,15 +681,10 @@ function recoverChat(chatId) {
                 });
 
                 alert("Chat recuperado com sucesso!");
-
-                // Atualiza a interface para refletir o chat ativo
-                $("#current-chat-title").text(chatId); // Exemplo de atualização do título do chat
-                smoothScrollToEnd();    
             }
         },
         error: function(error) {
             console.error("Erro ao recuperar chat:", error);
-            
         }
     });
 }

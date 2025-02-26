@@ -4,9 +4,9 @@ import json
 import re
 import os
 import pandas as pd
-
-from dotenv import load_dotenv
-load_dotenv()
+from Petrobras_AI_Agents.CONNECTORS import databricks_connector
+import copy
+from typing import Callable
 
 class DatabaseManager_Databricks(BaseDatabaseManager):
     
@@ -93,14 +93,17 @@ class DatabaseManager_Databricks(BaseDatabaseManager):
         with open(config_json, 'w', encoding='utf-8-sig') as arquivo:
             json.dump(config, arquivo, indent=2, ensure_ascii=False)
             
-    def __init__(self, user, config_json=None, connection=None):
+    def __init__(self, user=None, config_json=None, connection_as_function:Callable=None):
 
         config_json = config_json or self.__class__.config_file
+
+        self.connection_as_function:Callable = connection_as_function
         
-        self.connection = connection or self._create_connection()
         self._profile_table_list = [{"profile_id": 999999, "address": ""}]
-        super().__init__(config_json)
+        super().__init__(config_json, user=user)
+        self._connection = None
         
+        # Complete data_sources info
         for collection in self.config["data_sources"]:
             for table in self.config["data_sources"][collection]["tables"]:
                 self.config["data_sources"][collection]["tables"][table].update(
@@ -119,44 +122,20 @@ class DatabaseManager_Databricks(BaseDatabaseManager):
                         for p in self.config["data_sources"][collection]["tables"][table]['grants']
                         ]
 
-        self._allowed_tables = self._get_allowed_tables(user)
-
-        collection_to_remove = []
-        for collection in self.config["data_sources"]:
-            table_to_remove = []
-            for table in self.config["data_sources"][collection]["tables"]:
-                if not self.config["data_sources"][collection]["tables"][table]['address'] in self._allowed_tables:
-                    table_to_remove.append(table)
-            if table_to_remove:
-                for table in table_to_remove:
-                    print("Remove", table)
-                    del self.config["data_sources"][collection]["tables"][table]
-            if not self.config["data_sources"][collection]["tables"]:
-                collection_to_remove.append(collection)
-        if collection_to_remove:
-            for collection in collection_to_remove:
-                print("Remove", collection)
-                del self.config["data_sources"][collection]
-        
+        self.config = self.user_config_file(user)
+        self.config_initial = copy.deepcopy(self.config)
+            
     @property
+    def connection(self):
+        """Retorna a conexão, criando-a apenas se necessário."""
+        server_hostname=self.config["connection"]["server_hostname"]
+        http_path=self.config["connection"]["http_path"]
+        user = self.user
+        return self.connection_as_function(server_hostname=server_hostname, http_path=http_path, user=user)
+    
+    @property 
     def available_collections(self):
         return list(self.config["data_sources"].keys())
-        
-    def _create_connection(self):
-        
-        if not hasattr(self, 'connection') or self.connection is None:
-            access_token = os.getenv('DATABRICKS_CONN_TOKEN')
-            try:
-                connection = dbks_sql.connect(
-                                server_hostname = self.config["connection"]["server_hostname"],
-                                http_path = self.config["connection"]["http_path"],
-                                access_token = access_token)              
-                print('Conected to Databricks')
-                return connection
-            except: 
-                print('Connection fail')
-                return
-        return self.connection
 
     def _get_metadata_from_table(self, table):
         
@@ -227,24 +206,31 @@ class DatabaseManager_Databricks(BaseDatabaseManager):
         
         return rows_as_dict
 
-    def _get_allowed_tables(self, user) -> list:
+    def _get_allowed_tables(self, user=None, print_sql=False) -> list:
         table = self.config["users_access"]["table"]
         profile_table = pd.DataFrame(self._profile_table_list).drop_duplicates(subset=['profile_id', 'address'])
 
         profile_ids = ','.join(map(str, profile_table['profile_id'].tolist()))
 
+        user = user or self.user
+        if user:
+            user_line = f"AND VWRP_CD_ELEMENTO = '{user.upper()}'"
+        else:
+            user_line = ""
+            
         sql = f'''
-        SELECT PEPA_CD_PERFIL_PLATAFORMA as profile_id, VWRP_CD_ELEMENTO as user
+        SELECT DISTINCT PEPA_CD_PERFIL_PLATAFORMA as profile_id, VWRP_CD_ELEMENTO as user
         FROM {table}
         WHERE PEPA_CD_PERFIL_PLATAFORMA IN ({profile_ids})
-        AND VWRP_CD_ELEMENTO = '{user.upper()}'
+        {user_line}
         '''
+        
+        if print_sql: print(f"DatabaseManager_Databricks: \n{sql}", flush=True)
 
         result = self.get_table_as_dictionary(sql)
-
-        if not result: result_df = pd.DataFrame(columns=["profile_id", "address"])
+        if not result: result_df = pd.DataFrame(columns=["profile_id", "user"])
         else: result_df = pd.DataFrame(result)
-        
+
         result_df = pd.merge(
             profile_table, 
             result_df, 
@@ -255,3 +241,31 @@ class DatabaseManager_Databricks(BaseDatabaseManager):
         result_df = result_df['address'].unique().tolist()
         
         return result_df
+
+    def user_config_file(self, user=None, reset_config_json=False, print_sql=False):
+        
+        user = user or self.user
+        allowed_tables = self._get_allowed_tables(user, print_sql=print_sql)
+        
+        if reset_config_json: self.config = copy.deepcopy(self.config_initial)
+        
+        config = copy.deepcopy(self.config)
+        
+        collection_to_remove = []
+        for collection in config["data_sources"]:
+            table_to_remove = []
+            for table in config["data_sources"][collection]["tables"]:
+                if not config["data_sources"][collection]["tables"][table]['address'] in allowed_tables:
+                    table_to_remove.append(table)
+            if table_to_remove:
+                for table in table_to_remove:
+                    print("BaseAgent: Remove", table, flush=True)
+                    del config["data_sources"][collection]["tables"][table]
+            if not config["data_sources"][collection]["tables"]:
+                collection_to_remove.append(collection)
+        if collection_to_remove:
+            for collection in collection_to_remove:
+                print("DatabaseManager_Databricks: Remove", collection, flush=True)
+                del config["data_sources"][collection]
+        
+        return config

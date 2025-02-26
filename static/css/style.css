@@ -252,9 +252,9 @@ textarea {
     color: rgb(24, 91, 64);    /* Cor do texto em branco para contraste */
     text-align: center;        /* Centralizado */
     margin: 0;                 /* Remove margens extras */
-    padding: 10px 0;           /* Espaçamento vertical */
+    padding: 2px 0;           /* Espaçamento vertical */
     letter-spacing: 1px;       /* Espaçamento entre letras para melhor legibilidade */
-    text-transform: uppercase; /* Coloca o texto em maiúsculas para maior impacto */
+    /*text-transform: uppercase; /* Coloca o texto em maiúsculas para maior impacto */
 }
 
 /* Estilos de títulos com tamanhos diferenciados */
@@ -387,13 +387,13 @@ h4 {
     width: 100%;
     background-color: #007bff;
     color: white;
-    padding: 10px;
+    padding: 5px;
     border: none;
     text-align: center;
     margin-top: 15px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 /* Estilos para o cabeçalho */
@@ -435,6 +435,8 @@ h4 {
 .header-right {
     display: flex;
     align-items: center;
+    justify-content: flex-end; /* Alinha o conteúdo à direita */
+    margin-left: auto; /* Empurra o conteúdo para a direita */
 }
 
 /* Nome do perfil */
@@ -443,6 +445,7 @@ h4 {
     font-weight: bold;
     color: #666;
     margin-right: 10px;
+    white-space: nowrap; /* Evita quebra de linha */
 }
 
 /* Foto do usuário */

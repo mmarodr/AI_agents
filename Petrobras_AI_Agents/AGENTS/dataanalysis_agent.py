@@ -1,4 +1,4 @@
-from .base import BaseAgent, agent_response_par
+from .base import BaseAgent, AgentWork, agent_response_par
 from Petrobras_AI_Agents import BasellmClient
 from Petrobras_AI_Agents.ANALYSIS import BaseDatabaseManager
 from Petrobras_AI_Agents.READERS import read_file
@@ -12,8 +12,10 @@ import logging
 class DatabaseExpertAgent(BaseAgent):
     def __init__(
         self,
-        database_manager: BaseDatabaseManager,
+        work_instance: AgentWork,
+        database_manager: BaseDatabaseManager = None,
         collection_list: List[str]=None,
+        data_sources: Dict = None,
         llm: BasellmClient = None,
         agent_name: str = "DatabaseExpert Agent",
         next_agent_list: List[str] = None,
@@ -21,15 +23,17 @@ class DatabaseExpertAgent(BaseAgent):
         human_in_the_loop: bool = False,
         short_term_memory: bool = False):
 
-        self.__database_manager = database_manager
-        self.collection_list = collection_list or self.__database_manager.available_collections
-        self.topics        = {collection: dic['process_description'] for collection, dic in self.__database_manager.data_sources.items() if collection in self.collection_list}
-        self.relationships = {collection: dic['relationships']       for collection, dic in self.__database_manager.data_sources.items() if collection in self.collection_list}        
-        self.tables        = {collection: dic['tables']              for collection, dic in self.__database_manager.data_sources.items() if collection in self.collection_list}
+        self.work_instance = work_instance
+        self.database_manager = database_manager
+        if self.database_manager is None:
+            self.collection_list = collection_list
+            self.data_sources = data_sources
+        else:
+            self.collection_list = collection_list or self.database_manager.available_collections
+            self.data_sources = data_sources or self.database_manager.config["data_sources"]
 
         background = [
             "You are an expert in structured database querying, capable of analyzing complex database schemas.",
-            f"You have access to the following database structures: {json.dumps(self.topics, indent=2)}.",
             "Your primary task is to analyze the resulting table based on the user's request, focusing on insights, trends, or summaries derived from the queried data.",
             "The SQL generation is an intermediate step solely to retrieve the necessary data for analysis.",
             "You should also handle real-time data queries, leveraging relational mappings, views, and indexes for performance optimization.",
@@ -46,28 +50,39 @@ class DatabaseExpertAgent(BaseAgent):
         ]
 
 
-        super().__init__(llm=llm, agent_name=agent_name, background=background, goal=goal, next_agent_list=next_agent_list, allow_direct_response=allow_direct_response, human_in_the_loop=human_in_the_loop, short_term_memory=short_term_memory)
+        super().__init__(work_instance=self.work_instance, llm=llm, agent_name=agent_name, background=background, goal=goal, next_agent_list=next_agent_list,
+                         allow_direct_response=allow_direct_response, human_in_the_loop=human_in_the_loop, short_term_memory=short_term_memory)
         self._specialist = True
         
         if not self.collection_list:
             self.active(is_active=False)
-            
-        # self._tool_input = ""
-        # self.full_result = None
 
         self.tools = [
             self.data_analysis
         ]
 
+    @property
+    def collection_txt(self):
+        return [f"You have access to the following database structures: {json.dumps(self.topics, indent=2)}."]
+    
+    @property
+    def topics(self):
+        return {collection: dic['process_description'] for collection, dic in self.data_sources.items() if collection in self.collection_list}
+    @property
+    def relationships(self):
+        return {collection: dic['relationships']       for collection, dic in self.data_sources.items() if collection in self.collection_list}        
+    @property
+    def tables(self):
+        return {collection: dic['tables']              for collection, dic in self.data_sources.items() if collection in self.collection_list}
+    
     def _get_collection_name(self, query_input):
         
         steps = {
             "step_1": "Análise das coleções disponíveis e descrições:",
             "step_2": "Seleção da coleção mais adequada para a consulta do usuário.",
             "step_3": "Retorno da coleção selecionada."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _get_collection_name"})
-        print(f"    Executando tool: _get_collection_name")
+        
+        self.screem_presentation(text=f"    Executando tool: _get_collection_name")
         
         if len(self.topics) == 1:
             collection_name = list(self.topics.keys())[0]
@@ -85,8 +100,7 @@ class DatabaseExpertAgent(BaseAgent):
                 context       = self._user_feedback(),
                 as_json       = False)
 
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {collection_name}"})
-        print(f"    tool result: {collection_name}\n")
+        self.screem_presentation(text=f"    tool result: {collection_name}")
         
         return collection_name
     
@@ -97,9 +111,8 @@ class DatabaseExpertAgent(BaseAgent):
             "step_3": "Construct an optimized SQL query based on the input and database schema.",
             "step_4": "Execute the query and return the results."
         }
-        print(f"thoughts: {steps}")
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _generates_sql"})
-        print(f"    Executando tool: _generates_sql")
+
+        self.screem_presentation(text=f"    Executando tool: _get_collection_name")
                 
         system_prompt = [
             "You are tasked with generating an optimized SQL query to retrieve data from a complex relational database.",
@@ -113,7 +126,6 @@ class DatabaseExpertAgent(BaseAgent):
             "No extraneous text is needed in your response – only the complete and correct SQL query as instructed."
         ]
 
-        
         user_comment = self._rejected_responses[-1]['user_comment'] if self._rejected_responses else ""
         
         context = {
@@ -130,10 +142,9 @@ class DatabaseExpertAgent(BaseAgent):
                                 as_json=False) # A method from 
 
         sql = sql.replace("```sql", "").replace("```", "").strip()
-        # print(sql)
+
         self._sql_answers.append(sql)
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {sql}"})
-        print(f"    tool result: {sql}\n")
+        self.screem_presentation(text=f"    tool result: {sql}")
 
         return sql
     
@@ -158,8 +169,6 @@ class DatabaseExpertAgent(BaseAgent):
                                    system_prompt=system_prompt,
                                    as_json=True) # A method from 
         
-        # self.__class__.screem_presentation.append(f"    tool result: {sql}")
-        print(result)
         return result['sql'].replace("```sql", "").replace("```", "").strip(), result['suggestions']
     
     def data_analysis(self, query_input):
@@ -175,62 +184,69 @@ class DatabaseExpertAgent(BaseAgent):
             - The final result is returned as a structured table, based on the user's input.
         """
 
-        self._sql_answers = []
-        max_attempts = 5
-        max_result_rows = 30
-        attempt = 0
-        success = False
-        sql = None
-        suggestions = None
-
-        collection_name = self._get_collection_name(query_input)
-        # sql = self._generates_sql(query_input, collection_name)
-        # result = self.__database_manager.get_table_as_dictionary(sql)
-        # return result
-        
-        # Loop to attempt SQL generation and correction
-        while attempt < max_attempts and not success:
-            try:
-                if attempt == 0:
-                    # Generate initial SQL
-                    sql = self._generates_sql(query_input, collection_name)
-                # else:
-                    # Suggest optimizations and retry
-                    # sql, suggestions = self._suggest_optimizations(sql)
-
-                    
-                # Try executing the SQL
-                result_json = self.__database_manager.get_table_as_dictionary(sql)
-                self._tool_input = sql
-                
-                success = True  # If no error, set success to True
-            except Exception as e:
-                print(f"SQL execution failed on attempt {attempt + 1}: {e}")
-                # Pass error context to LLM for correction
-                query_input += f" SQL execution failed with error: {str(e)}"
-                attempt += 1
-
-        if success:
+        if self.collection_list:
             
-            BaseAgent.tool_result_for_chat[-1].append(
-                {self.agent_name: [
-                    {f"{collection_name}.csv": read_file.json_to_file(result_json, as_string=True)},
-                    {f"{collection_name}_sql.txt"            : read_file.string_to_file(sql, as_string=True)}
-                    ]
-                })
+            self._sql_answers = []
+            max_attempts = 5
+            max_result_rows = 30
+            attempt = 0
+            success = False
+            sql = None
+            suggestions = None
+
+            collection_name = self._get_collection_name(query_input)
+            # sql = self._generates_sql(query_input, collection_name)
+            # result = self.database_manager.get_table_as_dictionary(sql)
+            # return result
+            
+            # Loop to attempt SQL generation and correction
+            while attempt < max_attempts and not success:
+                try:
+                    if attempt == 0:
+                        # Generate initial SQL
+                        sql = self._generates_sql(query_input, collection_name)
+                    # else:
+                        # Suggest optimizations and retry
+                        # sql, suggestions = self._suggest_optimizations(sql)
+
                         
-            # Format the result for the final response
-            if len(result_json) > max_result_rows:
-                self.full_result = result_json
-                result = {
-                    "table": result_json[:max_result_rows],
-                    "Comments": f"The result has {len(result_json)} rows. Only the first {max_result_rows} rows are shown."}
+                    # Try executing the SQL
+                    result_json = self.database_manager.get_table_as_dictionary(sql)
+                    self._tool_input = sql
+                    
+                    success = True  # If no error, set success to True
+                except Exception as e:
+                    print(f"BaseAgent: SQL execution failed on attempt {attempt + 1}: {e}", flush=True)
+                    # Pass error context to LLM for correction
+                    query_input += f" SQL execution failed with error: {str(e)}"
+                    attempt += 1
 
+            if success:
+                files = {
+                        **{f"{collection_name}.csv": read_file.json_to_file(result_json, as_string=True)},
+                        **{f"{collection_name}_sql.txt": read_file.string_to_file(sql, as_string=True)}
+                }
+                
+                # BaseAgent.tool_result_for_chat.append(files)
+                            
+                # Format the result for the final response
+                if len(result_json) > max_result_rows:
+                    self.full_result = result_json
+                    result = {
+                        "table": result_json[:max_result_rows],
+                        "Comments": f"The result has {len(result_json)} rows. Only the first {max_result_rows} rows are shown."}
+
+                else:
+                    result = {
+                        "table": result_json,
+                        "Comments": f"The result has {len(result_json)} rows."}
+                    
+                return result, files
+            
             else:
-                result = {
-                    "table": result_json,
-                    "Comments": f"The result has {len(result_json)} rows."}
-        else:
-            result = {"error": "SQL execution failed after multiple attempts."}
+                result = {"error": "SQL execution failed after multiple attempts."}
 
-        return result
+                return result
+
+        
+        return ["Sem coleções disponíveis para a consulta. Reavalie habilitar alguma coleção para então refazer sua pergunta."]

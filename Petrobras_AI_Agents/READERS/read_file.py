@@ -68,7 +68,7 @@ class read_file:
         return text
                     
     def _read_pdf(self):
-        print('read_pdf')
+        print('read_file: read_pdf')
 
         file_fitz = fitz.open(stream=self.file_content, filetype="pdf")
         text = "".join([page.get_text() for page in file_fitz])
@@ -82,7 +82,7 @@ class read_file:
         self.read_result = [(words, keywords)]
 
     def _read_epub(self):
-        print('read_epub')
+        print('read_file: read_epub')
         
         warnings.filterwarnings('ignore', category=FutureWarning)
         warnings.filterwarnings('ignore', category=UserWarning)

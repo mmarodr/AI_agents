@@ -23,10 +23,11 @@ class KnowledgeBaseManager_SQLite(BaseKnowledgeBaseManager):
     config_file = ""
     
     @classmethod
-    def create_config_file(cls, config_json="//config_personal_collection.json", db_url=None):
+    def create_config_file(cls, config_json="//config_personal_collection.json", db_path=None, save_on_cls=True):
         if not os.path.exists(config_json):
-            db_url = db_url or "sqlite:///zdb_personal_collection.db"
-            db_path = db_url.replace("sqlite:///", "")
+            db_path = db_path or "zdb_personal_collection.db"
+            db_path = db_path.replace('\\', '/')
+            db_url = f"sqlite:///{db_path}"
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
             os.makedirs(os.path.dirname(config_json), exist_ok=True)
             
@@ -57,7 +58,7 @@ class KnowledgeBaseManager_SQLite(BaseKnowledgeBaseManager):
                 json.dump(config, arquivo, indent=2, ensure_ascii=False)
         
         # Update the config file name at the class level
-        cls.config_file = config_json
+        if save_on_cls: cls.config_file = config_json
         
     def __init__(self, config_json=None):
         config_json = config_json or self.__class__.config_file  

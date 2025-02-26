@@ -20,14 +20,15 @@ class BaseKnowledgeBaseManager:
         
         self.config_json = config_json
         self.available_collections = []
+        self.user = user
         
-        with open(self.config_json, 'r', encoding='utf-8-sig') as file:        
-            self.config = json.load(file)        
+        with open(self.config_json, 'r', encoding='utf-8-sig') as file:
+            self.config = json.load(file)
         
         self.db_conectors = {}
-        for collection_name in self.config["data_sources"]:      
+        for collection_name in self.config["data_sources"]:
             self.config["data_sources"][collection_name]["metadata"]  = self._get_metadata_from_table(collection_name)
-            self.db_conectors.update(self._get_dynamic_classes(collection_name)) 
+            self.db_conectors.update(self._get_dynamic_classes(collection_name))
         print("Manager iniciated")
         
     def _create_connection(self):

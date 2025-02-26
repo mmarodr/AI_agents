@@ -23,7 +23,7 @@ def search_web(query, num_results) -> str:
         logger.info(f"Executando busca na web para a consulta: {query}")
 
         # Criando uma instância de DDGS
-        with DDGS() as ddgs:
+        with DDGS(verify=False) as ddgs:
             results = ddgs.text(query, max_results=num_results)
 
         if not results:

@@ -14,10 +14,13 @@ class DatabaseManager_SQLite(BaseDatabaseManager):
     config_file = ""
 
     @classmethod
-    def create_config_file(cls, config_json="config_datasources.json", db_url=None):
+    def create_config_file(cls, config_json="config_datasources.json", db_path=None, save_on_cls=True):
         if not os.path.exists(config_json):
-            db_url = db_url or "sqlite:///zdb_analysis_database.db"
-            db_path = db_url.replace("sqlite:///", "")
+            
+            db_path = db_path or "zdb_analysis_database.db"
+            db_path = db_path.replace('\\', '/')
+            db_url = f"sqlite:///{db_path}"
+            print(db_url)
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
             os.makedirs(os.path.dirname(config_json), exist_ok=True)
             config = {
@@ -29,8 +32,9 @@ class DatabaseManager_SQLite(BaseDatabaseManager):
 
             with open(config_json, 'w', encoding='utf-8-sig') as file:
                 json.dump(config, file, indent=2, ensure_ascii=False)
-
-        cls.config_file = config_json
+        else:
+            print("exists")
+        if save_on_cls: cls.config_file = config_json
 
     def __init__(self, config_json=None):
 
@@ -41,9 +45,11 @@ class DatabaseManager_SQLite(BaseDatabaseManager):
         self.engine = create_engine(self.db_url)
 
         self.SessionFactory = sessionmaker(bind=self.engine)
-        
-        self.available_collections = list(self.data_sources.keys())
 
+    @property
+    def available_collections(self):
+        return list(self.data_sources.keys())
+    
     @property
     def generate_uuid(self):
         return str(uuid.uuid4())

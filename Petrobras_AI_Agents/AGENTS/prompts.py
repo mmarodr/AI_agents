@@ -18,17 +18,6 @@ llm_response_Instruction = [
         *prompt_json_format
         ]
 
-# llm_response_previous_agent = ["Name of the agent who generated the current task"]
-
-# llm_response_thoughts = [
-#         "Break down your reasoning into steps, each with a title and description.",
-#         "Return the steps as a list of dictionaries.",
-#         "Break down your reasoning into steps to provide a concise, coherent answer",
-#         "Be concise, especially on non-applicable points.",
-#         "Re-examine your decisions using different methods or perspectives, noting potential errors and how to address them.",
-#         "Include a critical self-assessment, acknowledging limitations and how they influence your reasoning."
-#         ]
-
 llm_response_answer = [
     "Always stick to your goals, defined on your description, when retriving responses.",
     "Give relevant details, especially mentioning key elements related to the context.",

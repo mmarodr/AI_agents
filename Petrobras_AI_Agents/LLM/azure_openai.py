@@ -7,24 +7,15 @@ from typing import Optional, Union
 from .base import BasellmClient
 from io import StringIO
 import tempfile
-
-from dotenv import load_dotenv
-load_dotenv()
+from decouple import config
 
 import logging
 logger = logging.getLogger(__name__)
 
-gpt4_model      = "gpt-4o-petrobras"
-embedding_model = "text-embedding-petrobras" # "text-embedding-3-large-petrobras"
-api_version     = "2024-06-01" # "2024-08-01-preview"
-gpt_azure_url   = "https://apid.petrobras.com.br/ia/openai/v1/openai-azure/openai"
-cert_file       = "petrobras-ca-root.pem"
-
-api_key = os.getenv('AZURE_OPENAI_API_KEY')
-
 class llmClient_AzureOpenAI(BasellmClient):
-    def __init__(self, model_text=gpt4_model, model_emb=embedding_model, api_version=api_version, base_url=gpt_azure_url, cert_file=cert_file, temperature=0):
+    def __init__(self, model_text, model_emb, api_version, base_url, cert_file, api_key=None, temperature=0):
         
+        api_key = api_key or config("AZURE_OPENAI_API_KEY", None)
         super().__init__(model_text=model_text, model_emb=model_emb)
         
         self.api_version        = api_version
@@ -34,64 +25,46 @@ class llmClient_AzureOpenAI(BasellmClient):
         self.certificate        = cert_file
         self.temperature        = temperature
         self.seed               = 0
-        self.headers            = {'Content-Type': 'application/json', 'api-key': os.getenv('AZURE_OPENAI_API_KEY')}
+        self.headers            = {'Content-Type': 'application/json', 'api-key': api_key}
         
-        logger.info(self.model_chat_endpoint)
+        # print(self.model_chat_endpoint, flush=True)
         
     def update_model_parameters(self, model_text=None, model_emb=None, api_version=None, temperature=None):
         if model_text is not None:   self.model_text = model_text
         if model_emb is not None:    self.model_emb = model_emb
         if api_version is not None:  self.api_version = api_version
         if temperature is not None:  self.temperature = temperature
-    
-    # @property
-    # def _create_session(self):
-    #     # Cria a sessão com requests
-    #     session = requests.Session()
-
-    #     # Se o certificado for fornecido como texto, cria um arquivo temporário
-    #     if self.certificate:
-    #         with tempfile.NamedTemporaryFile(delete=False, suffix=".pem") as temp_cert:
-    #             temp_cert.write(self.certificate.encode())  # Escreve o certificado no arquivo
-    #             temp_cert.flush()
-    #             session.verify = temp_cert.name  # Usa o arquivo temporário como certificado
-    #     else:
-    #         session.verify = True  # Usa o padrão se não houver certificado
-
-    #     return session
-        
+           
     def get_text(self, query_input, system_prompt="", context="", as_json=True):
 
         if not isinstance(query_input, str): query_input = json.dumps(query_input, indent=2, ensure_ascii=False)
         if not isinstance(system_prompt, str): system_prompt = json.dumps(system_prompt, indent=2, ensure_ascii=False)
         if not isinstance(context, str): context = json.dumps(context, indent=2, ensure_ascii=False)
 
-        # print("query_input", query_input)
+        # print("system_prompt", system_prompt)
 
         def run():
             
             response_dict = session.post(self.model_chat_endpoint, headers=self.headers, data=json.dumps(payload))
             response_dict.raise_for_status()
             response_json = response_dict.json()
-            logger.debug(f'response_json: {response_json}')
-            # print(f'response_json: {response_json}')
+            # print(f'llmClient_AzureOpenAI: response_json: {response_json}', flush=True)
             
             response_content = response_json['choices'][0]['message']['content']
-            logger.debug(f'response_json 2: {response_content}')
-            # print(f'response_json 2: {response_content}')
+            # print(f'llmClient_AzureOpenAI: response_json 2: {response_content}', flush=True)
             
             try:
-                if as_json: response_content = json.loads(response_content)
-                # print(f'response_json 2: {response_content}')
+                if as_json: 
+                    response_content = json.loads(response_content)
                 self.response_content = response_content
             except json.JSONDecodeError as e:
-                print(f"Erro ao decodificar JSON: {e}")
-                print("Conteúdo recebido:", response_content)
+                print(f"llmClient_AzureOpenAI: Erro ao decodificar JSON: {e}", flush=True)
+                print(f"llmClient_AzureOpenAI: Conteúdo recebido: {response_content}", flush=True)
             return response_content
             
         session         = requests.Session()
         session.verify  = self.certificate 
-        # session = self._create_session
+
         messages = [
                     {
                         "role": "system",
@@ -108,7 +81,7 @@ class llmClient_AzureOpenAI(BasellmClient):
                         "role": "user",
                         "content": query_input
                     }]
-        logger.debug(f"message to llm: {messages}")
+        # print(f"llmClient_AzureOpenAI: message to llm: {messages}", flush=True)
         
         payload = {
                     "messages": messages,
@@ -116,18 +89,18 @@ class llmClient_AzureOpenAI(BasellmClient):
                     "temperature": self.temperature,
                     # "seed": self.seed,
                 }
-        # print(payload)
+
         count = 1
         while count < 5:
-            if count > 1: logger.debug(f'Retrying request {count}')
+            if count > 1: 
+                print(f'llmClient_AzureOpenAI: Retrying request {count}', flush=True)
             try:
                 return run()
             except requests.exceptions.RequestException as e:
-                logger.debug(f"Request failed: {e}")
-                # print(f"Request failed: {e}")
+                print(f"llmClient_AzureOpenAI: Request failed: {e}", flush=True)
             except (KeyError, json.JSONDecodeError) as e:
-                logger.debug(f"Error parsing response: {e}")
-                # print(f"Error parsing response: {e}")
+                print(f"llmClient_AzureOpenAI: Error parsing response: {e}", flush=True)
+
                 
             count += 1
             
@@ -151,11 +124,11 @@ class llmClient_AzureOpenAI(BasellmClient):
                     time.sleep(retry_after + 5)
                     continue  # Tenta novamente após a pausa
                 else:
-                    logger.error(f'HTTP error occurred: {http_err}')
-                    logger.error(f'Response content: {response.text}')
+                    print(f'llmClient_AzureOpenAI: HTTP error occurred: {http_err}', flush=True)
+                    print(f'llmClient_AzureOpenAI: Response content: {response.text}', flush=True)
                     return None
             except Exception as err:
-                logger.error(f'Other error occurred: {err}')
+                print(f'llmClient_AzureOpenAI: Other error occurred: {err}', flush=True)
                 return None
 
             response_json = response.json()

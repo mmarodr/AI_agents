@@ -1,4 +1,4 @@
-from .base import BaseAgent, agent_response_par
+from .base import BaseAgent, AgentWork, agent_response_par
 from Petrobras_AI_Agents import BasellmClient, BaseKnowledgeBaseManager
 from Petrobras_AI_Agents.READERS import read_file
 from Petrobras_AI_Agents.AGENTS import prompts
@@ -10,12 +10,25 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+
+goal_txt= [
+    "For specific user questions, retrieve relevant document fragments to provide accurate and context-based answers.",
+    "For broader questions, provide summaries or detailed explanations of entire documents.",
+    "If the user is searching for documents, return a relevant list of documents based on the query.",
+    "For questions focused on data analysis, provide accurate counts, groupings, or other structured data as needed.",
+    "Ensure that your responses are fully based in the documents and data, avoiding assumptions or fabrications."
+    ]
+
+
 class KnowledgeBaseAgent(BaseAgent):
     def __init__(
         self,
-        KnowledgeBase: BaseKnowledgeBaseManager,
+        work_instance: AgentWork,
+        KnowledgeBase: BaseKnowledgeBaseManager = None,
         llm: BasellmClient = None,
         collection_list: List[str]=None,
+        data_sources: Dict =None,
         agent_name: str = "KnowledgeBase Agent",
         next_agent_list: List[str] = None,
         allow_direct_response: bool = True,
@@ -23,33 +36,37 @@ class KnowledgeBaseAgent(BaseAgent):
         human_in_the_loop: bool = False,
         short_term_memory: bool = False):
         
-        self.__KnowledgeBase = KnowledgeBase
-        self.collection_list = collection_list or self.__KnowledgeBase.available_collections
-        self.topics  = {collection: dic['metadata']['description'] for collection, dic in self.__KnowledgeBase.config["data_sources"].items() if collection in self.collection_list}
-        self.columns = {collection: dic['metadata']['columns']     for collection, dic in self.__KnowledgeBase.config["data_sources"].items() if collection in self.collection_list}
-        self.tables  = {collection: {"file_base": dic['file_base'], "vec_base": dic['vec_base']} for collection, dic in self.__KnowledgeBase.config["data_sources"].items()}
+        self.work_instance = work_instance
+        self.KnowledgeBase = KnowledgeBase
+        if self.KnowledgeBase is None:
+            self.collection_list = collection_list
+            self.data_sources = data_sources
+        else:
+            self.collection_list = collection_list or self.KnowledgeBase.available_collections
+            self.data_sources = data_sources or self.KnowledgeBase.config["data_sources"]
                 
         background = [
-            f"You are highly knowledgeable about the company's internal documentation, covering the following topics: {json.dumps(self.topics, indent=2)}.",
             "Your role involves performing various tasks related to document retrieval, summarization, and data analysis based on user queries.",
             "You are capable of retrieving relevant chunks of text from documents to answer specific questions (RAG).",
             "You can summarize or develop a broad understanding of entire documents when needed, providing detailed explanations or overviews.",
             "You can search and list documents relevant to user queries, similar to a search engine.",
-            "Additionally, you are able to perform data analysis tasks, such as counting, grouping, and listing information, and return this as either structured data or natural language."
+            "Additionally, you are able to perform data analysis tasks, such as counting, grouping, and listing information, and return this as either structured data or natural language.",
             "For all those tasks, you have to use one of the available tools, if any",
             "Avoid delegating tasks that you can execute directly. Responses should always be based on the content of documents and data, without assumptions or fabricated information."
             ]
 
-        goal = [''
-            # "Your goal is to determine the most appropriate task to perform based on the user's query, and execute it accurately.",
+        goal = [
             "For specific user questions, retrieve relevant document fragments to provide accurate and context-based answers.",
             "For broader questions, provide summaries or detailed explanations of entire documents.",
             "If the user is searching for documents, return a relevant list of documents based on the query.",
             "For questions focused on data analysis, provide accurate counts, groupings, or other structured data as needed.",
             "Ensure that your responses are fully based in the documents and data, avoiding assumptions or fabrications."
             ]
-
-        super().__init__(llm=llm, agent_name=agent_name, background=background, goal=goal, next_agent_list=next_agent_list, allow_direct_response=allow_direct_response, human_in_the_loop=human_in_the_loop, short_term_memory=short_term_memory)
+        
+        super().__init__(work_instance=self.work_instance, llm=llm, agent_name=agent_name,
+                         background=background, goal=goal,
+                         next_agent_list=next_agent_list, allow_direct_response=allow_direct_response,
+                         human_in_the_loop=human_in_the_loop, short_term_memory=short_term_memory)
         self._specialist = True
 
         if not self.collection_list:
@@ -60,39 +77,61 @@ class KnowledgeBaseAgent(BaseAgent):
         self.tools = [
             self.rag_complement, 
             self.document_summary,
-            self.document_search, 
-            self.data_analysis
+            # self.document_search,
+            # self.data_analysis
             ]
+
+    @property
+    def collection_txt(self):
+        return [f"You are highly knowledgeable about the company's internal documentation, covering the following topics: {json.dumps(self.topics, indent=2)}."]
         
+    @property
+    def topics(self):
+        return {collection: dic['metadata']['description'] for collection, dic in self.data_sources.items() if collection in self.collection_list}
+    @property
+    def columns(self):
+        return {collection: dic['metadata']['columns']     for collection, dic in self.data_sources.items() if collection in self.collection_list}
+    @property
+    def tables(self):
+        def format(dic):
+            return {"file_base": dic['file_base'], "vec_base": dic['vec_base']}
+        return {collection: format(dic)                    for collection, dic in self.data_sources.items() if collection in self.collection_list}
+    
+    def check_status_by_collection_list(self):
+        if not self.collection_list:
+            self.active(is_active=False)
+    
     def _get_collection_name(self, query_input):
         
         steps = {
             "step_1": "Análise das coleções disponíveis e descrições:",
             "step_2": "Seleção da coleção mais adequada para a consulta do usuário.",
             "step_3": "Retorno da coleção selecionada."}
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _get_collection_name"})
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        print(f"    Executando tool: _get_collection_name")
-        
-        if len(self.topics) == 1:
-            collection_name = list(self.topics.keys())[0]
-        else:
-            system_prompt = [
-                "Evaluate the best collection of documents to answer the user's query.",
-                f"These are the available collections and their descriptions: {self.topics}",
-                "**Only return the collection name, no additional text is needed.**",
-                ]
-            
-            collection_name = self.llm.get_text(
-                query_input,
-                system_prompt = system_prompt,
-                context       = self._user_feedback(),
-                as_json       = False)
 
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {collection_name}"})
-        print(f"    tool result: {collection_name}\n")
-        
-        return collection_name
+        self.screem_presentation(text=f"    Executando tool: _get_collection_name")
+                
+        if self.collection_list:
+
+            if len(self.topics) == 1:
+                collection_name = list(self.topics.keys())[0]
+            else:
+                system_prompt = [
+                    "Evaluate the best collection of documents to answer the user's query.",
+                    f"These are the available collections and their descriptions: {self.topics}",
+                    "**Only return the collection name, no additional text is needed.**",
+                    ]
+                
+                collection_name = self.llm.get_text(
+                    query_input,
+                    system_prompt = system_prompt,
+                    context       = self._user_feedback(),
+                    as_json       = False)
+
+            self.screem_presentation(text=f"    tool result: {collection_name}")
+            
+            return collection_name
+        else:
+            self.screem_presentation(text=f"    tool result: sem coleções disponíveis")
 
     def _generate_sql_filters(self, query_input, collection_name, add_system_prompt:list=[]):
 
@@ -101,9 +140,8 @@ class KnowledgeBaseAgent(BaseAgent):
             "step_2": "Geração de SQL para filtrar os documentos relevantes.",
             "step_3": "Teste dos filtros gerados.",
             "step_4": "Retorno dos filtros válidos."}
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _generate_sql_with_filters"})
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        print(f"    Executando tool: _generate_sql_with_filters")
+
+        self.screem_presentation(text=f"    Executando tool: _generate_sql_with_filters")
                 
         system_prompt = [
             "Your task is to generate SQL filters for the WHERE clause based on the provided context and user query.",
@@ -152,27 +190,26 @@ class KnowledgeBaseAgent(BaseAgent):
             context       = {**self._user_feedback(), **filter_context},
             as_json       = True)
 
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {response}"})
-        print(f"    tool result: {response}\n")
+        self.screem_presentation(text=f"    tool result: {response}")
         
         steps = {
             "step_1": "Análise da lista de filtros gerados.",
             "step_2": "teste do retorno de linhas para conjuntos de filtros.",
             "step_3": "Retorno dos filtros válidos."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        print(f"    Executando tool: KnowledgeBase.test_filters")
+
+        self.screem_presentation(text=f"    Executando tool: KnowledgeBase.test_filters")
         
         base_sql = response['query']
         filters  = response['filters']
 
-        sql, rows_returned = self.__KnowledgeBase.test_filters(base_sql, filters)
+        sql, rows_returned = self.KnowledgeBase.test_filters(base_sql, filters)
 
         import re
         regex = re.search(r"WHERE (.*)", sql, re.IGNORECASE)
         if regex: where_clause = f"WHERE {regex.group(1)}"
         else: where_clause = ""
         
-        print(f"    tool result: {rows_returned} rows returned using:\n    {where_clause}\n")
+        self.screem_presentation(text=f"    tool result: {rows_returned} rows returned using:\n    {where_clause}\n")
         
         return where_clause
     
@@ -181,35 +218,31 @@ class KnowledgeBaseAgent(BaseAgent):
         steps = {
             'step_1': 'Gerar o vetor com os embeddings do modelo apropriado.',
             "step_2": "Retorno do vetor gerado."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: llm.get_embeddings"})
-        print(f"    Executando tool: llm.get_embeddings")
+
+        self.screem_presentation(text=f"    Executando tool: llm.get_embeddings")
         
         embedding = self.llm.get_embeddings(query_input)    
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: vector embedding generated"})
-        print(f"    tool result: vector embedding generated\n")
+        self.screem_presentation(text=f"    tool result: vector embedding generated")
         
-        return     embedding
+        return embedding
     
     def _similatity_search(self, collection_name, embedding, filters, k=None):
         
         steps = {
             'step_1': 'Análise dos dados disponíveis ou abordagem de resolução de problemas.',
             'step_2': 'Geração de filtros pelos metadados das tabelas disponíveis.'}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: KnowledgeBase.similarity_search"})
-        print(f"    Executando tool: KnowledgeBase.similarity_search")
+
+        self.screem_presentation(text=f"    Executando tool: KnowledgeBase.similarity_search")
         
         if not k: k = self.__k
         
-        retrivered_rows = self.__KnowledgeBase.similarity_search(
+        retrivered_rows = self.KnowledgeBase.similarity_search(
             collection_name = collection_name,
             embedding       = embedding,
             k               = k,
             filters         = filters)
         
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: vector embedding returned"})
-        print(f"    tool result: vector embedding returned\n")
+        self.screem_presentation(text=f"    tool result: vector embedding returned")
         
         return retrivered_rows
     
@@ -217,12 +250,12 @@ class KnowledgeBaseAgent(BaseAgent):
         KnowledgeBase_docs = {}
         list_docs = docs
         for dict_item in list_docs:
-            dict_item[self.__KnowledgeBase.config["columns"]["context_col"]] = [dict_item[self.__KnowledgeBase.config["columns"]["context_col"]]]
-            source = dict_item[self.__KnowledgeBase.config["columns"]["source_col"]]
+            dict_item[self.KnowledgeBase.config["columns"]["context_col"]] = [dict_item[self.KnowledgeBase.config["columns"]["context_col"]]]
+            source = dict_item[self.KnowledgeBase.config["columns"]["source_col"]]
             if source not in KnowledgeBase_docs:
                 KnowledgeBase_docs[source] = dict_item
             else:
-                KnowledgeBase_docs[source][self.__KnowledgeBase.config["columns"]["context_col"]] += dict_item[self.__KnowledgeBase.config["columns"]["context_col"]]
+                KnowledgeBase_docs[source][self.KnowledgeBase.config["columns"]["context_col"]] += dict_item[self.KnowledgeBase.config["columns"]["context_col"]]
         
         if as_list: KnowledgeBase_docs = [v for k, v in KnowledgeBase_docs.items()]
         
@@ -234,9 +267,8 @@ class KnowledgeBaseAgent(BaseAgent):
             "step_1": "Entendimento da solicitação do usuário.",
             "step_2": "Avaliação dos documentos em contexto.",
             "step_3": "Retorno dos documentos relevantes."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _select_relevant_documents"})
-        print(f"    Executando tool: _select_relevant_documents")
+
+        self.screem_presentation(text=f"    Executando tool: _select_relevant_documents")
         
         response_format = {
                 'relevant_documents': [
@@ -263,13 +295,9 @@ class KnowledgeBaseAgent(BaseAgent):
             context       = KnowledgeBase_docs,
             as_json       = True)
 
-        
-        print(f"    tool result: {response}\n")
-
         retrivered_rows_used = [v for k, v in KnowledgeBase_docs.items()
-                                     if k in response['relevant_documents']]
-        
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {len(retrivered_rows_used)} ducuments used"})
+                                    if k in response['relevant_documents']]
+        self.screem_presentation(text=f"    tool result: {len(retrivered_rows_used)} ducuments used")
         
         return retrivered_rows_used
     
@@ -285,23 +313,21 @@ class KnowledgeBaseAgent(BaseAgent):
                 - For example, if the user asks 'What is the company's vacation policy?', retrieve the exact sections of the document that discuss the vacation policy.
         '''
         
-        collection_name    = self._get_collection_name(query_input)
-        where_clause       = self._generate_sql_filters(query_input, collection_name)
-        embedding          = self._generate_embedding(query_input)
-        retrivered_rows    = self._similatity_search(collection_name, embedding, k=self.__k, filters=where_clause)
-        KnowledgeBase_docs = self._aggregate_documents(query_input, retrivered_rows, as_list=False)
-        documents          = self._select_relevant_documents(query_input, KnowledgeBase_docs)
-        
-        # self.full_result = KnowledgeBase_docs
-        self._tool_input = where_clause
+        if self.collection_list:
+            collection_name    = self._get_collection_name(query_input)
+            where_clause       = self._generate_sql_filters(query_input, collection_name)
+            embedding          = self._generate_embedding(query_input)
+            retrivered_rows    = self._similatity_search(collection_name, embedding, k=self.__k, filters=where_clause)
+            KnowledgeBase_docs = self._aggregate_documents(query_input, retrivered_rows, as_list=False)
+            documents          = self._select_relevant_documents(query_input, KnowledgeBase_docs)
+            
+            self._tool_input = where_clause
 
-        BaseAgent.tool_result_for_chat[-1].append(
-            {self.agent_name: [
-                {f"{doc['source']}_{i+1}.txt": read_file.string_to_file(d, as_string=True)} 
-                for doc in documents for i, d in enumerate(doc['page_content'])]
-             })
-        # print('BaseAgent.tool_result_for_chat', BaseAgent.tool_result_for_chat[-1][-1])
-        return documents
+            files = {f"{doc['source']}_{i+1}.txt": read_file.string_to_file(d, as_string=True) for doc in documents for i, d in enumerate(doc['page_content'])} 
+
+            return documents, files
+        
+        return ["Sem coleções disponíveis para a consulta. Reavalie habilitar alguma coleção para então refazer sua pergunta."]
     
     def _retrieve_full_documents(self, collection_name, filters, k=5, words_per_chunk=2500, overlap=25):
         
@@ -309,11 +335,10 @@ class KnowledgeBaseAgent(BaseAgent):
             "step_1": "Lista documentos.",
             "step_2": "converte documento para texto.",
             "step_3": "Retorna dicionário de documentos com uma lista representando o conteúdo separado por em pedaços"}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: KnowledgeBase.retrieve_full_documents"})
-        print(f"    Executando tool: KnowledgeBase.retrieve_full_documents")
+
+        self.screem_presentation(text=f"    Executando tool: KnowledgeBase.retrieve_full_documents")
         
-        documents = self.__KnowledgeBase.retrieve_full_documents(collection_name, filters, k=3, words_per_chunk=2500, overlap=25)
+        documents = self.KnowledgeBase.retrieve_full_documents(collection_name, filters, k=3, words_per_chunk=2500, overlap=25)
 
         return documents
     
@@ -321,9 +346,8 @@ class KnowledgeBaseAgent(BaseAgent):
         
         steps = {
             "step_1": "resumo de parte do documento."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _get_text_summary"})
-        print(f"    Executando tool: _get_text_summary")
+
+        self.screem_presentation(text=f"    Executando tool: _get_text_summary")
         
         system_prompt = [
             "Summarize the provided document chunk based on the user's query.",
@@ -335,8 +359,7 @@ class KnowledgeBaseAgent(BaseAgent):
         
         summaries = []
         for i, chunk in enumerate(text): # Make it async
-            print(f"Working on {i+1} of {len(text)} texts")
-            BaseAgent.screem_presentation[-1].append({'text': f"Working on {i+1} of {len(text)} texts"})
+            self.screem_presentation(text=f"Working on {i+1} of {len(text)} texts")
             summary = self.llm.get_text(
                     query_input,
                     system_prompt=system_prompt,
@@ -347,8 +370,7 @@ class KnowledgeBaseAgent(BaseAgent):
             summaries.append(summary_aj)
         
         summaries_str = "\n_____________________________\n".join(summaries)
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: documents split into {len(summaries)} summaries"})
-        print(f"    tool result: documents split into {len(summaries)} summaries")
+        self.screem_presentation(text=f"    tool result: documents split into {len(summaries)} summaries")
             
         return [summaries_str]
     
@@ -368,28 +390,26 @@ class KnowledgeBaseAgent(BaseAgent):
                 - Divides large documents into smaller chunks, summarizes each chunk, and then combines the summaries.
         '''        
         
-        collection_name    = self._get_collection_name(query_input)
-        add_system_prompt  = ["**YOU MUST FOLLOW THIS INSTRUCTION FOR THIS ROUND: Do not use vec_base**"]
-        where_clause       = self._generate_sql_filters(query_input, collection_name, add_system_prompt)
-        documents:Dict     = self._retrieve_full_documents(collection_name, filters=where_clause, k=3, words_per_chunk=2500, overlap=25)
+        if self.collection_list:
+            collection_name    = self._get_collection_name(query_input)
+            add_system_prompt  = ["**YOU MUST FOLLOW THIS INSTRUCTION FOR THIS ROUND: Do not use vec_base**"]
+            where_clause       = self._generate_sql_filters(query_input, collection_name, add_system_prompt)
+            documents:Dict     = self._retrieve_full_documents(collection_name, filters=where_clause, k=3, words_per_chunk=2500, overlap=25)
 
-        summaries = {}
-        for source, content_list in documents.items():
-            BaseAgent.screem_presentation[-1].append({'text': f"    Summarizing document: {source}"})
-            print(f"    Summarizing document: {source}")
+            summaries = {}
+            for source, content_list in documents.items():
+                self.screem_presentation(text=f"    Summarizing document: {source}")
+                
+                text_summary_return = self._get_text_summary(query_input, text=content_list)
+                summaries[source] = text_summary_return
+
+            self._tool_input = where_clause
             
-            text_summary_return = self._get_text_summary(query_input, text=content_list)
-            summaries[source] = text_summary_return
+            files = {f"{source}.txt": read_file.string_to_file(s, as_string=True) for source, summary in summaries.items() for i, s in enumerate(summary)}
 
-        self._tool_input = where_clause
+            return summaries, files
         
-        BaseAgent.tool_result_for_chat[-1].append(
-            {self.agent_name: [
-                {f"{source}.txt": read_file.string_to_file(s, as_string=True)}
-                for source, summary in summaries.items() for i, s in enumerate(summary)]
-             })
-        # print('BaseAgent.tool_result_for_chat', BaseAgent.tool_result_for_chat[-1][-1])
-        return summaries
+        return ["Sem coleções disponíveis para a consulta. Reavalie habilitar alguma coleção para então refazer sua pergunta."]
 
     def _get_intention(self, query_input):
         
@@ -397,9 +417,8 @@ class KnowledgeBaseAgent(BaseAgent):
             "step_1": "Avaliar a solicitação do usuário.",
             "step_2": "Separar a solicitação do usuário em intenção de busca e quantidade a retornar",
             "step_3": "Estabelecer a intenção e a quantidade de resultados a retornar."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _get_intention"})
-        print(f"    Executando tool: _get_intention")
+
+        self.screem_presentation(text=f"    Executando tool: _get_intention")
         
         response_format = {
             'quantity': "number of documents to be retrieved. if the user does not specify, use 25, as an integer",
@@ -416,8 +435,7 @@ class KnowledgeBaseAgent(BaseAgent):
             system_prompt = system_prompt,
             as_json       = True)
         
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {response}"})
-        print(f"    tool result: {response}\n")
+        self.screem_presentation(text=f"    tool result: {response}")
         
         quantity = response["quantity"]
         question = response["question"]
@@ -431,21 +449,25 @@ class KnowledgeBaseAgent(BaseAgent):
             description:
                 Search for available documents in the user's context, similar to a search engine query.
             details:
-                - Use this task when the user is looking to find specific documents related to their query, but they are not asking for an answer directly.
+                - Use this task when the user is looking to find specific documents name related to their query, but they are not asking for an answer directly.
                 - The LLM should return a list of documents or parts of documents that are relevant to the user's question, similar to how a search engine would return results.
                 - For example, if the user asks 'What documents discuss internal auditing?', the LLM should list relevant documents that mention internal auditing.
+                - The point here is to find documents like a google search.
         '''             
 
-        quantity, question = self._get_intention(query_input)
-        collection_name    = self._get_collection_name(question)
-        where_clause       = self._generate_sql_filters(question, collection_name)
-        embedding          = self._generate_embedding(question)
-        retrivered_rows    = self._similatity_search(collection_name, embedding, k=quantity, filters=where_clause)
-        KnowledgeBase_docs = self._aggregate_documents(query_input, retrivered_rows)
-        
-        self.full_result = KnowledgeBase_docs
-        self._tool_input = where_clause
-        return len(KnowledgeBase_docs)
+        if self.collection_list:
+            quantity, question = self._get_intention(query_input)
+            collection_name    = self._get_collection_name(question)
+            where_clause       = self._generate_sql_filters(question, collection_name)
+            embedding          = self._generate_embedding(question)
+            retrivered_rows    = self._similatity_search(collection_name, embedding, k=quantity, filters=where_clause)
+            KnowledgeBase_docs = self._aggregate_documents(query_input, retrivered_rows)
+            
+            self.full_result = KnowledgeBase_docs
+            self._tool_input = where_clause
+            return len(KnowledgeBase_docs)
+    
+        return ["Sem coleções disponíveis para a consulta. Reavalie habilitar alguma coleção para então refazer sua pergunta."]
 
     def _generates_sql(self, query_input): # uses llm to generate sql query
         
@@ -454,9 +476,8 @@ class KnowledgeBaseAgent(BaseAgent):
             "step_2": "Identificar as tabelas relevantes.",
             "step_3": "Identificar as colunas apropriadas.",
             "step_4": "Construir a query SQL."}
-        print(colored(f"thoughts: {steps}", 'cyan'))
-        BaseAgent.screem_presentation[-1].append({'text': f"    Executando tool: _generates_sql"})
-        print(f"    Executando tool: _generates_sql")
+
+        self.screem_presentation(text=f"    Executando tool: _generates_sql")
         
         system_prompt = [
             "Your task is to generate a SQL query to answer the user's question based on the provided context.",
@@ -481,8 +502,7 @@ class KnowledgeBaseAgent(BaseAgent):
                                 as_json=False) # A method from 
 
         self._sql_answers.append(sql)
-        BaseAgent.screem_presentation[-1].append({'text': f"    tool result: {sql}"})
-        print(f"    tool result: {sql}\n")
+        self.screem_presentation(text=f"    tool result: {sql}")
 
         return sql
     
@@ -496,27 +516,34 @@ class KnowledgeBaseAgent(BaseAgent):
                 - Use this task when the user's question is more related to data analysis, such as counts, groupings, or listings, and not focused on document content.
                 - Even if the user formulates the question in natural language, the expected return is more likely to be a table or aggregation of data.
                 - For example, if the user asks 'How many documents were filed this month?', the LLM should return a table or count, not text from documents.
-        '''                        
-        self._sql_answers = []
-                       
-        count = 0
-        while True:
-            try:
-                sql = self._generates_sql(query_input)
-                result_table = self.__KnowledgeBase.get_table_as_dictionary(sql)
-                break
-            except Exception as e:
-                print(e)
-                count += 1
-                
-            if count == 5:
-                result_table = {}
-                break
+        '''
         
-        self.full_result = result_table
-        result_table = result_table[:20]
-        result = {"result_table": result_table, "sql": sql}
+        if self.collection_list:
+            
+            self._sql_answers = []
+                        
+            count = 0
+            while True:
+                try:
+                    sql = self._generates_sql(query_input)
+                    result_table = self.KnowledgeBase.get_table_as_dictionary(sql)
+                    break
+                except Exception as e:
+                    print(e)
+                    count += 1
+                    
+                if count == 5:
+                    result_table = {}
+                    break
+            
+            self.full_result = result_table
+            result_table = result_table[:20]
+            result = {"result_table": result_table, "sql": sql}
 
-        self._tool_input = sql
+            self._tool_input = sql
 
-        return result
+            return result
+        
+        return ["Sem coleções disponíveis para a consulta. Reavalie habilitar alguma coleção para então refazer sua pergunta."]
+        
+        
